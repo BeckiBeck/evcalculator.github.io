@@ -526,6 +526,10 @@
       display: block;
     }
 
+    #resetConfirmModal {
+      z-index: 21000;
+    }
+
     .settings-page {
       width: min(760px, 100%);
       margin: 0 auto;
@@ -1045,7 +1049,7 @@
           </div>
           <div>
             <label for="temp">Temperatur °C</label>
-            <select id="temp"></select>
+            <input id="temp" type="number" inputmode="decimal" value="20" step="1" />
           </div>
           <button id="weatherRefreshBtn" class="weather-refresh-btn" type="button" title="Wetter von Meteoblue laden" aria-label="Wetter von Meteoblue laden">↻</button>
         </div>
@@ -1222,6 +1226,27 @@
     </section>
   </div>
 
+  <div id="resetConfirmModal" class="modal-backdrop" aria-hidden="true">
+    <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="resetConfirmTitle">
+      <div class="settings-head">
+        <h2 id="resetConfirmTitle">Fahrzeug auf Standard zurücksetzen</h2>
+      </div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Zurücksetzen bestätigen</h3>
+          <p id="resetConfirmMessage" class="hint">Die aktuellen Einstellungen werden auf die Standardwerte des ausgewählten Fahrzeugs zurückgesetzt.</p>
+          <p class="hint">Manuell geänderte Werte für Verbrauch, Akku, Masse und Expertenparameter werden dabei überschrieben.</p>
+        </section>
+      </div>
+
+      <div class="settings-actions">
+        <button id="resetConfirmCancelBtn" class="secondary-btn" type="button">Abbrechen</button>
+        <button id="resetConfirmOkBtn" type="button">Zurücksetzen bestätigen</button>
+      </div>
+    </section>
+  </div>
+
   <div id="settingsModal" class="modal-backdrop" aria-hidden="true">
     <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="settings-head">
@@ -1269,14 +1294,14 @@
               </div>
 
               <div class="factor-control">
-                <div class="factor-head"><span>Geschwindigkeitskurve</span><output id="factorSpeedOut">100 %</output></div>
-                <input id="factorSpeed" type="range" min="0" max="800" step="25" value="100" />
-                <small>Bestimmt die neue Geschwindigkeitskurve: Im Ortsgebiet wird die Wirkung stark gedämpft, weil Luftwiderstand dort nur wenig dominiert. Ab etwa 80 km/h steigt der Luftwiderstandsanteil quadratisch nach v². 0 % = nahezu neutral, 100 % = Standard, höhere Werte verstärken die Autobahn-Sensitivität.</small>
+                <div class="factor-head"><span>Geschwindigkeitskurve</span><output id="factorSpeedOut">250 %</output></div>
+                <input id="factorSpeed" type="range" min="0" max="800" step="25" value="250" />
+                <small>Bestimmt die quadratische Geschwindigkeitskurve: 30-65 km/h bleibt nahezu neutral. Erst oberhalb von ca. 65 km/h steigt der Verbrauch nach v² deutlich an. Der Regler skaliert diese Abweichung: 0 % = fast neutral, 100 % = realistische Standardkurve, 800 % = extreme Autobahn-Sensitivität.</small>
               </div>
 
               <div class="factor-control">
-                <div class="factor-head"><span>Temperaturkurve</span><output id="factorTemperatureOut">110 %</output></div>
-                <input id="factorTemperature" type="range" min="0" max="500" step="10" value="110" />
+                <div class="factor-head"><span>Temperaturkurve</span><output id="factorTemperatureOut">40 %</output></div>
+                <input id="factorTemperature" type="range" min="0" max="500" step="10" value="40" />
                 <small>Steuert den Mehrverbrauch bei Kälte und Hitze. 0 % ignoriert Temperatur, höhere Werte verstärken Heiz-, Klima- und Akkuverluste.</small>
               </div>
 
@@ -1477,31 +1502,30 @@
       temp: "20",
       serviceConsent: null,
       addressHistory: [],
-      elevationRouteCache: []
+      elevationRouteCache: [],
+      defaultFactorTemperaturePercent: 40
     };
 
-    const DEFAULT_FACTOR_SPEED_PERCENT = 100;
-    const DEFAULT_FACTOR_TEMPERATURE_PERCENT = 110;
+    const DEFAULT_FACTOR_SPEED_PERCENT = 250;
+    const DEFAULT_FACTOR_TEMPERATURE_PERCENT = 40;
+    const LEGACY_FACTOR_TEMPERATURE_PERCENT = 110;
 
     function applyDefaultFactorValues(settings) {
       if (!settings) return settings;
-
-      // Modellversion 2 interpretiert die Geschwindigkeitskurve direkt:
-      // 100 % = Standard. Alte Builds verwendeten häufig 250 % als faktischen
-      // Standardwert; dieser Wert wird beim Laden einmalig auf 100 % migriert,
-      // damit vorhandene Browser-Konfigurationen nicht zu aggressiv bleiben.
-      if (settings.speedCurveModelVersion !== 2 && Number(settings.factorSpeedPercent) === 250) {
-        settings.factorSpeedPercent = DEFAULT_FACTOR_SPEED_PERCENT;
-      }
-
       if (settings.factorSpeedPercent === undefined || settings.factorSpeedPercent === null) {
         settings.factorSpeedPercent = DEFAULT_FACTOR_SPEED_PERCENT;
       }
       if (settings.factorTemperaturePercent === undefined || settings.factorTemperaturePercent === null) {
         settings.factorTemperaturePercent = DEFAULT_FACTOR_TEMPERATURE_PERCENT;
       }
+      return settings;
+    }
 
-      settings.speedCurveModelVersion = 2;
+    function migrateLegacyTemperatureDefault(settings, shouldMigrate) {
+      applyDefaultFactorValues(settings);
+      if (shouldMigrate && Number(settings?.factorTemperaturePercent) === LEGACY_FACTOR_TEMPERATURE_PERCENT) {
+        settings.factorTemperaturePercent = DEFAULT_FACTOR_TEMPERATURE_PERCENT;
+      }
       return settings;
     }
 
@@ -1869,7 +1893,7 @@
       const meteo = extractMeteoblueTemperature(data, targetDate);
 
       if (meteo && Number.isFinite(meteo.temperature)) {
-        $("temp").value = normalizeTemperatureValue(meteo.temperature);
+        $("temp").value = meteo.temperature.toFixed(1);
         saveConfig();
         logDebug(
           `Meteoblue Daten verwendet: Block=${meteo.blockName}, Zeitfeld=${meteo.timeField}, Temperaturfeld=${meteo.tempField}, ` +
@@ -2619,72 +2643,6 @@
       };
     }
 
-    function clampNumber(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-    }
-
-    function smoothstep01(edge0, edge1, value) {
-      if (edge0 === edge1) return value >= edge1 ? 1 : 0;
-      const x = clampNumber((value - edge0) / (edge1 - edge0), 0, 1);
-      return x * x * (3 - 2 * x);
-    }
-
-    function classifyStepRoadType(step) {
-      const classes = step.intersections?.flatMap(i => i.classes || []) || [];
-      const roadName = String(step.name || "").toLowerCase();
-      const destinations = String(step.destinations || "").toLowerCase();
-      const ref = String(step.ref || "").toLowerCase();
-      const combined = `${roadName} ${destinations} ${ref}`;
-
-      if (
-        classes.includes("motorway") ||
-        /\b[a]\s?\d+\b/.test(combined) ||
-        combined.includes("autobahn") ||
-        combined.includes("motorway")
-      ) return "motorway";
-
-      if (
-        classes.includes("trunk") ||
-        combined.includes("schnellstraße") ||
-        /\b[s]\s?\d+\b/.test(combined)
-      ) return "trunk";
-
-      if (classes.includes("primary")) return "primary";
-      if (classes.includes("secondary")) return "secondary";
-      if (classes.includes("tertiary")) return "tertiary";
-      if (classes.includes("residential") || classes.includes("living_street") || classes.includes("service")) return "urban";
-      return "unknown";
-    }
-
-    function deriveConsumableSpeedKmh(osrmStepSpeed, standardSpeed, roadType, distanceM) {
-      const osrmSpeed = clampNumber(Number(osrmStepSpeed || 0), 5, 180);
-      const standard = Number(standardSpeed);
-      if (!Number.isFinite(standard) || standard <= 0) return osrmSpeed;
-
-      // Wichtig: OSRM liefert in Ortsgebieten oft niedrige Step-Geschwindigkeiten,
-      // auch wenn die Straße als primary/secondary klassifiziert ist. Diese niedrige
-      // Geschwindigkeit darf nicht pauschal auf 90-100 km/h hochgezogen werden, sonst
-      // verändert ein Max-Speed-Limit den Verbrauch innerorts viel zu stark.
-      if (roadType === "motorway") {
-        const motorwayConfidence = smoothstep01(55, 85, osrmSpeed) * smoothstep01(250, 900, distanceM);
-        return osrmSpeed + Math.max(0, standard - osrmSpeed) * motorwayConfidence;
-      }
-
-      if (roadType === "trunk") {
-        const trunkConfidence = smoothstep01(55, 90, osrmSpeed) * smoothstep01(300, 1200, distanceM);
-        return osrmSpeed + Math.max(0, standard - osrmSpeed) * trunkConfidence;
-      }
-
-      if (["primary", "secondary", "tertiary"].includes(roadType)) {
-        const lower = roadType === "primary" ? 58 : roadType === "secondary" ? 55 : 52;
-        const upper = roadType === "primary" ? 84 : roadType === "secondary" ? 78 : 72;
-        const ruralConfidence = smoothstep01(lower, upper, osrmSpeed) * smoothstep01(450, 1600, distanceM);
-        return osrmSpeed + Math.max(0, standard - osrmSpeed) * ruralConfidence;
-      }
-
-      return osrmSpeed;
-    }
-
     function inferStepStandardSpeedKmh(step) {
       const classes = step.intersections?.flatMap(i => i.classes || []) || [];
       const roadName = String(step.name || "").toLowerCase();
@@ -2727,18 +2685,15 @@
       const segments = [];
 
       if (!steps.length) {
-        const referenceSpeed = Math.max(routeAvgSpeed, 5);
-        const speed = userMaxSpeed ? Math.min(referenceSpeed, userMaxSpeed) : referenceSpeed;
+        const speed = userMaxSpeed ? Math.min(routeAvgSpeed, userMaxSpeed) : routeAvgSpeed;
         segments.push({
           distanceM: route.distance,
           originalSeconds: route.duration,
           seconds: (route.distance / 1000) / Math.max(speed, 5) * 3600,
           originalSpeedKmh: routeAvgSpeed,
-          osrmSpeedKmh: routeAvgSpeed,
-          referenceSpeedKmh: referenceSpeed,
           speedKmh: Math.max(speed, 5),
           standardSpeedKmh: null,
-          capped: userMaxSpeed > 0 && speed < referenceSpeed,
+          capped: userMaxSpeed > 0 && speed < routeAvgSpeed,
           roadType: "fallback",
           stopEvents: Math.max(0, Math.round((route.distance / 1000) / 8))
         });
@@ -2752,15 +2707,22 @@
 
         const osrmStepSpeed = (distM / 1000) / (durS / 3600);
         const standardSpeed = inferStepStandardSpeedKmh(step);
-        const roadType = classifyStepRoadType(step);
-        const referenceSpeed = deriveConsumableSpeedKmh(osrmStepSpeed, standardSpeed, roadType, distM);
+        const referenceSpeed = standardSpeed ? Math.max(standardSpeed, osrmStepSpeed) : osrmStepSpeed;
         const limitedSpeed = userMaxSpeed ? Math.min(referenceSpeed, userMaxSpeed) : referenceSpeed;
         const seconds = (distM / 1000) / Math.max(limitedSpeed, 5) * 3600;
 
+        const classes = step.intersections?.flatMap(i => i.classes || []) || [];
+        const roadType =
+          classes.includes("motorway") ? "motorway" :
+          classes.includes("trunk") ? "trunk" :
+          classes.includes("primary") ? "primary" :
+          classes.includes("secondary") ? "secondary" :
+          classes.includes("tertiary") ? "tertiary" :
+          (classes.includes("residential") || classes.includes("living_street") || classes.includes("service")) ? "urban" :
+          "unknown";
+
         // Heuristik für Zusatzereignisse im Zeitmodell, weil OSRM keine echte
-        // Geschwindigkeitskurve mit Ampeln und Kreisverkehren liefert. Diese Events
-        // werden aktuell nur diagnostisch geführt und nicht als harter Verbrauchstreiber
-        // verwendet, damit Ortsgebiet nicht überbewertet wird.
+        // Geschwindigkeitskurve mit Ampeln und Kreisverkehren liefert.
         let stopSpacingKm = 4.0;
         if (roadType === "urban") stopSpacingKm = 0.75;
         else if (roadType === "tertiary") stopSpacingKm = 1.4;
@@ -2778,8 +2740,6 @@
           originalSeconds: durS,
           seconds,
           originalSpeedKmh: osrmStepSpeed,
-          osrmSpeedKmh: osrmStepSpeed,
-          referenceSpeedKmh: Math.max(referenceSpeed, 5),
           speedKmh: Math.max(limitedSpeed, 5),
           standardSpeedKmh: standardSpeed,
           capped: userMaxSpeed > 0 && limitedSpeed < referenceSpeed,
@@ -2806,8 +2766,7 @@
       for (const seg of segments) {
         seconds += seg.seconds;
         modeledDistance += seg.distanceM;
-        const referenceSpeed = seg.referenceSpeedKmh || seg.originalSpeedKmh || seg.speedKmh;
-        weightedV2Original += seg.distanceM * referenceSpeed * referenceSpeed;
+        weightedV2Original += seg.distanceM * seg.originalSpeedKmh * seg.originalSpeedKmh;
         weightedV2Limited += seg.distanceM * seg.speedKmh * seg.speedKmh;
         if (seg.capped) {
           cappedDistanceM += seg.distanceM;
@@ -2841,7 +2800,7 @@
       const referenceAvgSpeed = speedModel?.referenceAvgSpeedKmh || avgSpeed;
       const segments = speedModel?.segments?.length
         ? speedModel.segments
-        : [{ distanceM, seconds: durationS, speedKmh: avgSpeed, originalSpeedKmh: avgSpeed, roadType: "fallback" }];
+        : [{ distanceM, seconds: durationS, speedKmh: avgSpeed, originalSpeedKmh: avgSpeed }];
 
       const vehicleMassKg = Number(vehicleSettings.massKg || 2000);
       const regenBase = Math.max(0, Math.min(0.85, Number(vehicleSettings.regenEffPercent || 45) / 100));
@@ -2849,99 +2808,58 @@
       const g = 9.81;
       const jouleToKwh = 1 / 3600000;
 
-      // Neues Verbrauchsmodell fuer Geschwindigkeit:
-      // - Stadt/Ortsgebiet wird stark gedaempft, weil Luftwiderstand dort nur einen kleinen Anteil hat.
-      // - Ab ca. 70-90 km/h geht die Kurve weich in ein physikalisches v^2-Modell ueber.
-      // - Das Nutzerlimit wirkt segmentweise. Dadurch senkt z.B. 120 statt 130 km/h den Autobahnverbrauch,
-      //   waehrend 35 statt 55 km/h im Ortsgebiet nur wenig veraendert.
+      // Neues Primärmodell:
+      // 1) Basisverbrauch ist der reale Fahrzeuganker in kWh/100 km.
+      // 2) Geschwindigkeit verändert diesen Anker über eine glatte Kurve.
+      // 3) Temperatur verändert den Verbrauch über eine separate Kurve.
+      // 4) Höhenprofil wird als Netto-Steigung/Gefälle plus symmetrische Profilwellen addiert.
+      // Keine indirekten Einzelanteile: nur Primärparameter, die Nutzer direkt verstehen und kalibrieren können.
       const factorBase = settingPercent(vehicleSettings, "factorBasePercent", 100) / 100;
-      const factorSpeedRaw = settingPercent(vehicleSettings, "factorSpeedPercent", DEFAULT_FACTOR_SPEED_PERCENT) / 100;
-      const factorTemperature = settingPercent(vehicleSettings, "factorTemperaturePercent", 110) / 100;
+      const factorSpeedRaw = settingPercent(vehicleSettings, "factorSpeedPercent", 250) / 100;
+      // Der Slider skaliert nur die Abweichung von der neutralen Stadt-/Ortsgeschwindigkeit.
+      // Wichtig: Im Bereich 30-65 km/h darf der Regler fast nichts verändern, sonst entstehen
+      // unrealistische Sprünge wie 37 km/h = 17 kWh und 53 km/h = 23 kWh. Über 65 km/h wird
+      // die quadratische v²-Kurve dagegen sichtbar stärker oder schwächer.
+      const factorSpeed = factorSpeedRaw <= 1
+        ? factorSpeedRaw * 0.90
+        : 1 + ((factorSpeedRaw - 1) * 1.85);
+      const factorTemperature = settingPercent(vehicleSettings, "factorTemperaturePercent", DEFAULT_FACTOR_TEMPERATURE_PERCENT) / 100;
       const factorElevation = settingPercent(vehicleSettings, "factorElevationPercent", 100) / 100;
       const factorRegen = settingPercent(vehicleSettings, "factorRegenPercent", 100) / 100;
 
-      const speedAnchorKmh = Math.max(68, Math.min(82, Number(vehicleSettings.speedAnchorKmh || 72)));
-      const cityNeutralKmh = 50;
-      const cityDampingEndKmh = 68;
-      const highwayFullEffectKmh = 92;
+      // Geschwindigkeitskurve nach realem Fahrverhalten:
+      // Die Kurve ist bewusst nach rechts verschoben: 30-65 km/h liegen fast auf demselben
+      // Verbrauchsniveau. Das entspricht Stadt-/Ortsverkehr, wo Luftwiderstand noch nicht
+      // dominiert und kleine Durchschnittsspeed-Unterschiede keinen großen kWh-Sprung erzeugen.
+      // Erst oberhalb der neutralen Schwelle steigt der Mehrverbrauch quadratisch mit v².
+      const speedAnchorKmh = Math.max(65, Math.min(80, Number(vehicleSettings.speedAnchorKmh || 72)));
+      const aeroCurveWeight = 0.055;
       const basisKwhPerKm = (basisKwh100 * factorBase) / 100;
-
-      // Aus dem Fahrzeugpreset wird eine kleine Fahrzeugcharakteristik abgeleitet:
-      // effiziente Limousinen haben einen kleineren Aero-Anteil, hohe/SUV-artige Fahrzeuge einen groesseren.
-      const presetPenalty = Number(vehicleSettings.speedPenaltyPercentPerKmh || 0.80);
-      const aeroShareAtAnchor = clamp(0.155 + ((presetPenalty - 0.78) * 0.11), 0.12, 0.26);
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
       }
 
-      function smoothStep(edge0, edge1, value) {
-        const x = clamp((value - edge0) / Math.max(edge1 - edge0, 0.001), 0, 1);
-        return x * x * (3 - 2 * x);
-      }
-
-      function roadAeroMultiplier(roadType) {
-        switch (roadType) {
-          case "motorway": return 1.18;
-          case "trunk": return 1.10;
-          case "primary": return 1.00;
-          case "secondary": return 0.86;
-          case "tertiary": return 0.68;
-          case "urban": return 0.46;
-          default: return 0.82;
-        }
-      }
-
-      function roadHighSpeedBlendMultiplier(roadType) {
-        switch (roadType) {
-          case "motorway": return 1.00;
-          case "trunk": return 0.95;
-          case "primary": return 0.86;
-          case "secondary": return 0.68;
-          case "tertiary": return 0.48;
-          case "urban": return 0.26;
-          default: return 0.62;
-        }
-      }
-
-      function citySpeedFactorForSpeed(speedKmh) {
-        const speed = clamp(Number(speedKmh || cityNeutralKmh), 5, 85);
-
-        // Sehr flacher Ortsgebiet-Bereich: 30-65 km/h sollen nur wenige Prozent auseinanderliegen.
-        const linearCityPart = 1 + (speed - cityNeutralKmh) * 0.00125;
-        const crawlPenalty = 0.026 * Math.pow(clamp((26 - speed) / 20, 0, 1), 1.25);
-        return clamp(linearCityPart + crawlPenalty, 0.965, 1.040);
-      }
-
-      function physicalAeroFactorForSpeed(speedKmh, roadType) {
+      function speedFactorForSpeed(speedKmh) {
         const speed = clamp(Number(speedKmh || speedAnchorKmh), 5, 180);
-        const aeroShare = clamp(aeroShareAtAnchor * roadAeroMultiplier(roadType), 0.07, 0.34);
-        return (1 - aeroShare) + (aeroShare * Math.pow(speed / speedAnchorKmh, 2));
-      }
+        let raw;
 
-      function speedFactorForSegment(speedKmh, roadType = "unknown") {
-        const speed = clamp(Number(speedKmh || speedAnchorKmh), 5, 180);
-        const cityFactor = citySpeedFactorForSpeed(speed);
-        const aeroFactor = physicalAeroFactorForSpeed(speed, roadType);
+        if (speed <= speedAnchorKmh) {
+          // Sehr flacher Bereich für Stadt/Ortsgebiet:
+          // 25-70 km/h unterscheiden sich im kWh/100-km-Wert nur gering.
+          // Damit Hin-/Retour-Routen in urbanem Bereich nicht künstlich auseinanderlaufen.
+          const veryLowRange = clamp((25 - speed) / 20, 0, 1);
+          raw = 1 + 0.010 * Math.pow(veryLowRange, 1.15);
+        } else {
+          // Gedämpfte quadratische Hochgeschwindigkeitskurve:
+          // Luftwiderstand steigt zwar mit v², aber der Fahrzeug-Basisverbrauch enthält bereits
+          // einen realen Mischanteil. Deshalb darf der Zusatz erst deutlich oberhalb des
+          // Stadt-/Ortsbereichs spürbar werden.
+          const quadraticAeroRise = Math.pow(speed / speedAnchorKmh, 2) - 1;
+          raw = 1 + aeroCurveWeight * quadraticAeroRise;
+        }
 
-        // Weicher Uebergang: Unterhalb des Ortsgebiet-Endes fast nur Stadtfaktor,
-        // auf der Autobahn oberhalb ca. 90 km/h nahezu volles v^2-Verhalten.
-        let highSpeedBlend = smoothStep(cityDampingEndKmh, highwayFullEffectKmh, speed);
-        highSpeedBlend *= roadHighSpeedBlendMultiplier(roadType);
-        highSpeedBlend = clamp(highSpeedBlend, 0, 1);
-
-        const raw = (cityFactor * (1 - highSpeedBlend)) + (aeroFactor * highSpeedBlend);
-
-        // Der Nutzerregler darf die Low-Speed-Zone nicht wieder ueberempfindlich machen.
-        // Deshalb wird die Reglerstaerke im Ortsgebiet stark reduziert und erst im
-        // Hochgeschwindigkeitsbereich voll verwendet.
-        const highSpeedStrength = factorSpeedRaw <= 1
-          ? factorSpeedRaw
-          : 1 + ((factorSpeedRaw - 1) * 0.55);
-        const lowSpeedStrength = Math.min(highSpeedStrength, factorSpeedRaw * 0.12);
-        const strength = (lowSpeedStrength * (1 - highSpeedBlend)) + (highSpeedStrength * highSpeedBlend);
-
-        return clamp(1 + ((raw - 1) * strength), 0.90, 3.20);
+        return clamp(1 + ((raw - 1) * factorSpeed), 0.92, 4.00);
       }
 
       function temperatureFactorForTemp(t) {
@@ -2959,62 +2877,16 @@
         return clamp(1 + ((raw - 1) * factorTemperature), 0.75, 3.00);
       }
 
-      let weightedSpeedFactorDistance = 0;
-      let weightedReferenceSpeedFactorDistance = 0;
-      let weightedLowSpeedFactorDistance = 0;
-      let totalSegmentDistance = 0;
-      let lowSpeedDistanceKm = 0;
-      let highSpeedDistanceKm = 0;
-      let urbanDampedDistanceKm = 0;
-
-      for (const seg of segments) {
-        const segmentDistanceKm = Math.max(0, Number(seg.distanceM || 0) / 1000);
-        if (segmentDistanceKm <= 0) continue;
-
-        const roadType = seg.roadType || "unknown";
-        const segmentSpeedKmh = clamp(Number(seg.speedKmh || avgSpeed), 5, 180);
-        const referenceSegmentSpeedKmh = clamp(Number(seg.standardSpeedKmh || seg.originalSpeedKmh || referenceAvgSpeed), 5, 180);
-        const segmentFactor = speedFactorForSegment(segmentSpeedKmh, roadType);
-        const referenceFactor = speedFactorForSegment(referenceSegmentSpeedKmh, roadType);
-
-        weightedSpeedFactorDistance += segmentDistanceKm * segmentFactor;
-        weightedReferenceSpeedFactorDistance += segmentDistanceKm * referenceFactor;
-        totalSegmentDistance += segmentDistanceKm;
-
-        if (segmentSpeedKmh <= cityDampingEndKmh || roadType === "urban" || roadType === "tertiary") {
-          lowSpeedDistanceKm += segmentDistanceKm;
-          weightedLowSpeedFactorDistance += segmentDistanceKm * segmentFactor;
-        }
-
-        if (segmentSpeedKmh >= highwayFullEffectKmh || roadType === "motorway" || roadType === "trunk") {
-          highSpeedDistanceKm += segmentDistanceKm;
-        }
-
-        if (roadHighSpeedBlendMultiplier(roadType) <= 0.48 || segmentSpeedKmh <= cityDampingEndKmh) {
-          urbanDampedDistanceKm += segmentDistanceKm;
-        }
-      }
-
-      if (totalSegmentDistance <= 0) {
-        totalSegmentDistance = distanceKm;
-        const fallbackFactor = speedFactorForSegment(avgSpeed, "fallback");
-        weightedSpeedFactorDistance = distanceKm * fallbackFactor;
-        weightedReferenceSpeedFactorDistance = distanceKm * speedFactorForSegment(referenceAvgSpeed, "fallback");
-        if (avgSpeed <= cityDampingEndKmh) {
-          lowSpeedDistanceKm = distanceKm;
-          weightedLowSpeedFactorDistance = distanceKm * fallbackFactor;
-          urbanDampedDistanceKm = distanceKm;
-        } else if (avgSpeed >= highwayFullEffectKmh) {
-          highSpeedDistanceKm = distanceKm;
-        }
-      }
-
-      const speedFactor = weightedSpeedFactorDistance / Math.max(totalSegmentDistance, 0.001);
-      const referenceSpeedFactor = weightedReferenceSpeedFactorDistance / Math.max(totalSegmentDistance, 0.001);
-      const lowSpeedFactor = lowSpeedDistanceKm > 0
-        ? weightedLowSpeedFactorDistance / Math.max(lowSpeedDistanceKm, 0.001)
-        : citySpeedFactorForSpeed(Math.min(avgSpeed, cityNeutralKmh));
-      const speedEnergyKwh = basisKwhPerKm * distanceKm * speedFactor;
+      // Verbrauch über Geschwindigkeit bewusst routenbasiert:
+      // OSRM segmentiert Hin- und Rückweg teilweise unterschiedlich. Wenn man jeden Step
+      // einzeln mit Straßenklassen bewertet, entstehen bei fast gleicher Strecke zu große
+      // kWh/100-km-Unterschiede. Für Verbrauch nutzen wir daher den gedämpften Faktor aus
+      // der tatsächlichen Modell-Ø-Geschwindigkeit. Die Segmentdaten bleiben für Fahrzeit,
+      // Max-Speed und Diagnose erhalten.
+      const routeSpeedFactor = speedFactorForSpeed(avgSpeed);
+      let weightedSpeedFactorDistance = distanceKm * routeSpeedFactor;
+      let totalSegmentDistance = distanceKm;
+      let speedEnergyKwh = basisKwhPerKm * distanceKm * routeSpeedFactor;
 
       const tempFactor = temperatureFactorForTemp(tempC);
       const baseKwh = speedEnergyKwh * tempFactor;
@@ -3044,12 +2916,15 @@
 
         // Profilwellen sind symmetrisch und nicht richtungsdominant. Nur ein kleiner Anteil bleibt als Verlust.
         const undulationGrossKwh = vehicleMassKg * g * sharedUndulationM * jouleToKwh;
+        // Profilwellen dürfen Hin/Retour in flachem Gebiet nicht dominieren.
+        // Deshalb sehr defensiver Verlustanteil; echter Netto-Höhenunterschied bleibt separat wirksam.
         elevationUndulationLossKwh = undulationGrossKwh * Math.max(0, (1 / driveEff) - regenEff) * 0.12 * elevationScale;
       }
 
       const totalKwh = Math.max(0, baseKwh + elevationExtraKwh + elevationUndulationLossKwh - recuperationCreditKwh);
       const kwh100 = totalKwh / (distanceM / 100000);
-      const speedLimitEnergyFactor = referenceSpeedFactor > 0 ? speedFactor / referenceSpeedFactor : 1;
+      const speedFactor = totalSegmentDistance > 0 ? weightedSpeedFactorDistance / totalSegmentDistance : speedFactorForSpeed(avgSpeed);
+      const lowSpeedFactor = speedFactorForSpeed(avgSpeed);
 
       return {
         avgSpeed,
@@ -3073,39 +2948,22 @@
         stopStartNetKwh: 0,
         kineticNetKwh: 0,
         speedFactor,
-        segmentSpeedFactor: speedFactor,
-        referenceSpeedFactor,
         tempFactor,
         aerodynamicFactor: speedModel?.aerodynamicFactor ?? 1,
-        speedLimitEnergyFactor,
+        speedLimitEnergyFactor: speedFactor,
         lowSpeedFactor,
-        lowSpeedFloor: lowSpeedStrengthForDiagnostics(factorSpeedRaw),
-        lowSpeedReferenceKmh: cityDampingEndKmh,
-        baseSpeedFactor: referenceSpeedFactor,
+        lowSpeedFloor: 1,
+        lowSpeedReferenceKmh: speedAnchorKmh,
+        baseSpeedFactor: speedFactor,
         baseEnergyCalibration: factorBase,
-        highSpeedDistanceShare: highSpeedDistanceKm / Math.max(totalSegmentDistance, 0.001),
-        lowSpeedDistanceShare: lowSpeedDistanceKm / Math.max(totalSegmentDistance, 0.001),
-        urbanDampedDistanceShare: urbanDampedDistanceKm / Math.max(totalSegmentDistance, 0.001),
-        lowSpeedDistanceM: lowSpeedDistanceKm * 1000,
-        highSpeedDistanceM: highSpeedDistanceKm * 1000,
-        urbanDampedDistanceM: urbanDampedDistanceKm * 1000,
-        speedSegmentBlend: highSpeedDistanceKm / Math.max(totalSegmentDistance, 0.001),
-        aeroShareAtAnchor: aeroShareAtAnchor,
         factorBasePercent: factorBase * 100,
         factorSpeedPercent: factorSpeedRaw * 100,
-        factorSpeedEffectivePercent: (factorSpeedRaw <= 1 ? factorSpeedRaw : 1 + ((factorSpeedRaw - 1) * 0.55)) * 100,
+        factorSpeedEffectivePercent: factorSpeed * 100,
         lowSpeedConsumptionMultiplier: lowSpeedFactor,
         factorTemperaturePercent: factorTemperature * 100,
         factorElevationPercent: factorElevation * 100,
         factorRegenPercent: factorRegen * 100
       };
-
-      function lowSpeedStrengthForDiagnostics(rawFactor) {
-        const highSpeedStrength = rawFactor <= 1
-          ? rawFactor
-          : 1 + ((rawFactor - 1) * 0.55);
-        return Math.min(highSpeedStrength, rawFactor * 0.12);
-      }
     }
 
     function initMap() {
@@ -3290,10 +3148,9 @@
         );
         const est = estimateConsumption(route.distance, durationForModel, tempC, elevation, durationInfo);
         logDebug(
-          `Verbrauch Speedmodell: Modell-Ø=${est.avgSpeed.toFixed(1)} km/h, Plateau/v²-Faktor=${est.speedFactor.toFixed(3)}, ` +
-          `Low-Speed-Anteil=${(est.lowSpeedDistanceM / 1000).toFixed(1)} km (${(est.lowSpeedDistanceShare * 100).toFixed(0)} %), ` +
-          `High-Speed-Anteil=${(est.highSpeedDistanceM / 1000).toFixed(1)} km (${(est.highSpeedDistanceShare * 100).toFixed(0)} %), ` +
-          `Ref=${est.lowSpeedReferenceKmh} km/h, Aero-Anteil=${(est.aeroShareAtAnchor * 100).toFixed(0)} %, ` +
+          `Verbrauch Speedmodell: Modell-Ø=${est.avgSpeed.toFixed(1)} km/h, Routen-Speed-Faktor=${est.speedFactor.toFixed(3)}, ` +
+          `Low-Speed-Faktor=${est.lowSpeedFactor.toFixed(3)} (gedämpft auf Verbrauch=${est.lowSpeedConsumptionMultiplier.toFixed(3)}, Min=${est.lowSpeedFloor.toFixed(2)}, Ref=${est.lowSpeedReferenceKmh} km/h), ` +
+          `Monotonie-Faktor=${est.speedLimitEnergyFactor.toFixed(3)}, ` +
           `Aero-Diagnose=${est.aerodynamicFactor.toFixed(3)}`
         );
         logDebug(
@@ -3324,7 +3181,7 @@
           est.kwh100.toFixed(1).replace(".", ",") + " kWh/100 km";
 
         $("diagnosis").textContent =
-          `${via ? "Route über: " + via.name + ". " : ""}Fahrzeug: ${vehicleSettings.brand} ${vehicleSettings.model}. Max-Speed: ${$("maxSpeed").value === "0" ? "ohne Begrenzung" : $("maxSpeed").value + " km/h"}${durationInfo.capped ? " – Fahrzeit und Verbrauch angepasst" : ""} (${durationInfo.method}). Neues Plateau/v²-Primärmodell: Geschwindigkeit ${est.speedEnergyKwh.toFixed(1).replace(".", ",")} kWh, Temperaturaufschlag ${(est.baseKwh - est.speedEnergyKwh).toFixed(1).replace(".", ",")} kWh, Höhe netto bergauf ${est.elevationExtraKwh.toFixed(1).replace(".", ",")} kWh, Profilwellen ${est.elevationUndulationLossKwh.toFixed(1).replace(".", ",")} kWh, Rekuperation netto −${est.recuperationCreditKwh.toFixed(1).replace(".", ",")} kWh. Faktoren: Geschwindigkeit ${est.speedFactor.toFixed(2).replace(".", ",")}×, Temperatur ${est.tempFactor.toFixed(2).replace(".", ",")}×, Basis ${est.factorBasePercent.toFixed(0)} %, Speed-Kurve ${est.factorSpeedPercent.toFixed(0)} %, Low-Speed ${(est.lowSpeedDistanceM / 1000).toFixed(1).replace(".", ",")} km (${(est.lowSpeedDistanceShare * 100).toFixed(0)} %), High-Speed ${(est.highSpeedDistanceM / 1000).toFixed(1).replace(".", ",")} km (${(est.highSpeedDistanceShare * 100).toFixed(0)} %), Aero-Anteil ${(est.aeroShareAtAnchor * 100).toFixed(0)} %, Temp-Kurve ${est.factorTemperaturePercent.toFixed(0)} %, Steigung ${est.factorElevationPercent.toFixed(0)} %, Reku ${est.factorRegenPercent.toFixed(0)} %. Ø ${est.avgSpeed.toFixed(0).replace(".", ",")} km/h.`;
+          `${via ? "Route über: " + via.name + ". " : ""}Fahrzeug: ${vehicleSettings.brand} ${vehicleSettings.model}. Max-Speed: ${$("maxSpeed").value === "0" ? "ohne Begrenzung" : $("maxSpeed").value + " km/h"}${durationInfo.capped ? " – Fahrzeit angepasst" : ""} (${durationInfo.method}). Neues Primärmodell: Geschwindigkeit ${est.speedEnergyKwh.toFixed(1).replace(".", ",")} kWh, Temperaturaufschlag ${(est.baseKwh - est.speedEnergyKwh).toFixed(1).replace(".", ",")} kWh, Höhe netto bergauf ${est.elevationExtraKwh.toFixed(1).replace(".", ",")} kWh, Profilwellen ${est.elevationUndulationLossKwh.toFixed(1).replace(".", ",")} kWh, Rekuperation netto −${est.recuperationCreditKwh.toFixed(1).replace(".", ",")} kWh. Faktoren: Geschwindigkeit ${est.speedFactor.toFixed(2).replace(".", ",")}×, Temperatur ${est.tempFactor.toFixed(2).replace(".", ",")}×, Basis ${est.factorBasePercent.toFixed(0)} %, Speed-Kurve ${est.factorSpeedPercent.toFixed(0)} % (effektiv ${est.factorSpeedEffectivePercent.toFixed(0)} %), Temp-Kurve ${est.factorTemperaturePercent.toFixed(0)} %, Steigung ${est.factorElevationPercent.toFixed(0)} %, Reku ${est.factorRegenPercent.toFixed(0)} %. Ø ${est.avgSpeed.toFixed(0).replace(".", ",")} km/h.`;
 
         saveConfig();
         setProgress(100);
@@ -3346,8 +3203,9 @@
       appConfig.maxSpeed = $("maxSpeed")?.value || appConfig.maxSpeed;
       appConfig.meteoblueKey = getMeteoblueKey();
       appConfig.basis = String(vehicleSettings.basisKwh100);
-      appConfig.temp = normalizeTemperatureValue($("temp")?.value || "20");
+      appConfig.temp = $("temp")?.value || "20";
       appConfig.customVehicles = vehiclePresets.filter(v => String(v.id).startsWith("custom-"));
+      appConfig.defaultFactorTemperaturePercent = DEFAULT_FACTOR_TEMPERATURE_PERCENT;
 
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appConfig));
@@ -3399,6 +3257,7 @@
         if (!raw) return;
 
         const saved = JSON.parse(raw);
+        const shouldMigrateTemperatureDefault = saved.defaultFactorTemperaturePercent !== DEFAULT_FACTOR_TEMPERATURE_PERCENT;
         appConfig = { ...appConfig, ...saved };
         appConfig.addressHistory = Array.isArray(saved.addressHistory) ? saved.addressHistory : [];
         appConfig.elevationRouteCache = Array.isArray(saved.elevationRouteCache) ? saved.elevationRouteCache.slice(0, ELEVATION_ROUTE_CACHE_LIMIT) : [];
@@ -3410,6 +3269,8 @@
           });
         }
 
+        vehiclePresets.forEach(vehicle => migrateLegacyTemperatureDefault(vehicle, shouldMigrateTemperatureDefault));
+
         if (!appConfig.meteoblueKey) {
           appConfig.meteoblueKey = DEFAULT_METEOBLUE_KEY;
         }
@@ -3420,35 +3281,17 @@
           vehicleSettings = { ...presetById(saved.vehicleId) };
         }
 
-        vehiclePresets.forEach(applyDefaultFactorValues);
-        applyDefaultFactorValues(vehicleSettings);
-        applyDefaultFactorValues(appConfig.vehicleSettings);
+        migrateLegacyTemperatureDefault(vehicleSettings, shouldMigrateTemperatureDefault);
+        appConfig.vehicleSettings = { ...vehicleSettings };
+        appConfig.defaultFactorTemperaturePercent = DEFAULT_FACTOR_TEMPERATURE_PERCENT;
       } catch (err) {
         logDebug("Konfiguration konnte nicht geladen werden: " + err.message);
       }
     }
 
-    function normalizeTemperatureValue(value) {
-      const numeric = Number(value);
-      if (!Number.isFinite(numeric)) return "20";
-      return String(Math.max(-30, Math.min(50, Math.round(numeric))));
-    }
-
-    function populateTemperatureSelect() {
-      const select = $("temp");
-      if (!select || select.options?.length) return;
-
-      for (let t = -30; t <= 50; t++) {
-        const option = document.createElement("option");
-        option.value = String(t);
-        option.textContent = `${t > 0 ? "+" : ""}${t} °C`;
-        select.appendChild(option);
-      }
-    }
-
     function applyConfigToUi() {
       $("maxSpeed").value = appConfig.maxSpeed || "120";
-      $("temp").value = normalizeTemperatureValue(appConfig.temp || "20");
+      $("temp").value = appConfig.temp || "20";
     }
 
     function populateVehicleSelect() {
@@ -3490,7 +3333,7 @@
       $("settingsBattery").value = settings.batteryKwh;
       $("factorBase").value = settingPercent(settings, "factorBasePercent", 100);
       $("factorSpeed").value = settingPercent(settings, "factorSpeedPercent", 250);
-      $("factorTemperature").value = settingPercent(settings, "factorTemperaturePercent", 110);
+      $("factorTemperature").value = settingPercent(settings, "factorTemperaturePercent", DEFAULT_FACTOR_TEMPERATURE_PERCENT);
       $("factorElevation").value = settingPercent(settings, "factorElevationPercent", 100);
       $("factorRegen").value = settingPercent(settings, "factorRegenPercent", 100);
       updateFactorOutputs();
@@ -3512,8 +3355,8 @@
         speedPenaltyPercentPerKmh: Number(preset.speedPenaltyPercentPerKmh || vehicleSettings.speedPenaltyPercentPerKmh || 0.8),
         speedReferenceKmh: Number(preset.speedReferenceKmh || vehicleSettings.speedReferenceKmh || 90),
         factorBasePercent: Number($("factorBase").value || 100),
-        factorSpeedPercent: Number($("factorSpeed").value || DEFAULT_FACTOR_SPEED_PERCENT),
-        factorTemperaturePercent: Number($("factorTemperature").value || 110),
+        factorSpeedPercent: Number($("factorSpeed").value || 250),
+        factorTemperaturePercent: Number($("factorTemperature").value || DEFAULT_FACTOR_TEMPERATURE_PERCENT),
         factorElevationPercent: Number($("factorElevation").value || 100),
         factorRegenPercent: Number($("factorRegen").value || 100)
       };
@@ -3550,12 +3393,45 @@
       setStatus("Fahrzeugparameter übernommen und gespeichert.", "ok");
     }
 
-    function resetSettings() {
-      vehicleSettings = { ...vehiclePresets[0] };
+    let pendingResetVehicleId = null;
+
+    function selectedVehiclePresetForReset() {
+      return migrateLegacyTemperatureDefault({ ...presetById($("vehicleSelect").value || vehicleSettings.id) }, false);
+    }
+
+    function openResetConfirmModal() {
+      const preset = selectedVehiclePresetForReset();
+      pendingResetVehicleId = preset.id;
+      $("resetConfirmMessage").textContent =
+        `Die Einstellungen für „${preset.brand} ${preset.model}“ werden auf die Standardwerte dieses Fahrzeugs zurückgesetzt. ` +
+        `Manuell geänderte Werte für Verbrauch, Akku, Masse und Expertenparameter werden überschrieben.`;
+      $("resetConfirmModal").classList.add("open");
+      $("resetConfirmModal").setAttribute("aria-hidden", "false");
+    }
+
+    function closeResetConfirmModal() {
+      pendingResetVehicleId = null;
+      $("resetConfirmModal").classList.remove("open");
+      $("resetConfirmModal").setAttribute("aria-hidden", "true");
+    }
+
+    function confirmResetSettings() {
+      const preset = migrateLegacyTemperatureDefault({ ...presetById(pendingResetVehicleId || $("vehicleSelect").value || vehicleSettings.id) }, false);
+      vehicleSettings = { ...preset };
       loadVehicleSettingsToForm(vehicleSettings);
       updateVehicleSummary();
       saveConfig();
-      setStatus("Standardparameter wiederhergestellt und gespeichert.");
+      closeResetConfirmModal();
+      setStatus(`Standardwerte für ${vehicleSettings.brand} ${vehicleSettings.model} wiederhergestellt und gespeichert.`, "ok");
+    }
+
+    function cancelResetSettings() {
+      closeResetConfirmModal();
+      setStatus("Zurücksetzen abgebrochen.");
+    }
+
+    function resetSettings() {
+      openResetConfirmModal();
     }
 
     function toggleExpertFields() {
@@ -3599,8 +3475,8 @@
         speedPenaltyPercentPerKmh: 0.8,
         speedReferenceKmh: 90,
         factorBasePercent: 100,
-        factorSpeedPercent: DEFAULT_FACTOR_SPEED_PERCENT,
-        factorTemperaturePercent: 110,
+        factorSpeedPercent: 250,
+        factorTemperaturePercent: DEFAULT_FACTOR_TEMPERATURE_PERCENT,
         factorElevationPercent: 100,
         factorRegenPercent: 100
       };
@@ -3723,7 +3599,6 @@
     document.addEventListener("DOMContentLoaded", () => {
       initStartDateTime();
       loadConfig();
-      populateTemperatureSelect();
       populateVehicleSelect();
       loadVehicleSettingsToForm(vehicleSettings);
       updateVehicleSummary();
@@ -3757,6 +3632,11 @@
       $("settingsCloseBtn").addEventListener("click", closeSettings);
       $("settingsSaveBtn").addEventListener("click", saveSettings);
       $("settingsResetBtn").addEventListener("click", resetSettings);
+      $("resetConfirmCancelBtn").addEventListener("click", cancelResetSettings);
+      $("resetConfirmOkBtn").addEventListener("click", confirmResetSettings);
+      $("resetConfirmModal").addEventListener("click", (event) => {
+        if (event.target.id === "resetConfirmModal") cancelResetSettings();
+      });
       $("settingsExportBtn").addEventListener("click", exportConfigFile);
       $("settingsImportBtn").addEventListener("click", () => $("settingsImportFile").click());
       $("settingsImportFile").addEventListener("change", (event) => importConfigFile(event.target.files?.[0]));
