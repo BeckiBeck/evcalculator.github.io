@@ -1,0 +1,3379 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>E-Auto Verbrauchsrechner – realistischere Verbrauchsberechnung</title>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #38bdf8;
+      --danger: #fb7185;
+      --ok: #86efac;
+      --warn: #fde68a;
+      --border: rgba(255,255,255,.14);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 14px 14px 10px;
+      background: linear-gradient(135deg, #111827, #0f172a);
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.12rem;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .layout {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .panel,
+    .map-card,
+    .cards,
+    .debug-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: visible;
+    }
+
+    .panel {
+      padding: 12px;
+      position: relative;
+      z-index: 30;
+    }
+
+    label {
+      display: block;
+      font-size: .8rem;
+      color: var(--muted);
+      margin: 9px 0 4px;
+    }
+
+    input, button {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 1rem;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .clear-btn {
+      margin-top: 0;
+      min-height: 46px;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .swap-btn,
+    .settings-open-btn {
+      margin-top: 10px;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-weight: 750;
+    }
+
+    .vehicle-summary {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(56, 189, 248, .10);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.35;
+    }
+
+    .vehicle-summary strong {
+      display: block;
+      color: var(--text);
+      font-size: .92rem;
+      margin-bottom: 2px;
+    }
+
+    .route-options {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .datetime-row {
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .weather-refresh-btn {
+      margin: 0;
+      min-height: 46px;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    details.main-section {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,.035);
+      overflow: visible;
+    }
+
+    details.main-section summary {
+      min-height: 44px;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: 800;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    details.main-section summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.main-section summary::after {
+      content: "öffnen";
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 600;
+    }
+
+    details.main-section[open] summary::after {
+      content: "schließen";
+    }
+
+    .section-body {
+      padding: 0 10px 10px;
+    }
+
+    .primary-results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .compact-card {
+      padding: 10px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .compact-card span {
+      display: block;
+      color: var(--muted);
+      font-size: .76rem;
+    }
+
+    .compact-card strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 1rem;
+    }
+
+    .small-note {
+      color: var(--muted);
+      font-size: .78rem;
+      line-height: 1.3;
+      margin-top: 6px;
+    }
+
+    .add-vehicle-btn {
+      margin-top: 10px;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    input {
+      background: var(--panel2);
+      color: var(--text);
+      padding: 10px 12px;
+    }
+
+    button {
+      margin-top: 12px;
+      background: var(--accent);
+      color: #082f49;
+      font-weight: 850;
+      cursor: pointer;
+      border: 0;
+    }
+
+    button:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .autocomplete {
+      position: relative;
+    }
+
+    .suggestions {
+      position: absolute;
+      z-index: 9999;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.45);
+      display: none;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .suggestions.show { display: block; }
+
+    .suggestion {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      font-size: .92rem;
+      line-height: 1.25;
+    }
+
+    .suggestion:last-child { border-bottom: 0; }
+
+    .suggestion:hover,
+    .suggestion.active {
+      background: rgba(56, 189, 248, .18);
+    }
+
+    .suggestion small {
+      display: block;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .progress-wrap {
+      margin-top: 12px;
+      width: 100%;
+      height: 16px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      display: block;
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #86efac);
+      transition: width .25s ease;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: .9rem;
+      color: var(--muted);
+      min-height: 1.3em;
+      white-space: pre-wrap;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+
+    .map-card {
+      padding: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .map-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    #map {
+      width: 100%;
+      height: 360px;
+      min-height: 360px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #0b1120;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .leaflet-container {
+      font: inherit;
+    }
+
+    .map-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .map-actions button {
+      margin-top: 0;
+      min-height: 40px;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: .88rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 12px;
+      padding: 16px 12px;
+      align-items: stretch;
+    }
+
+    .cards > summary {
+      grid-column: 1 / -1;
+      margin: -10px -10px 0;
+    }
+
+    .cards:not([open]) > .card {
+      display: none;
+    }
+
+    .card {
+      padding: 14px 12px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 84px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 1.02rem;
+      margin-top: 4px;
+      overflow-wrap: anywhere;
+    }
+
+    .card span {
+      color: var(--muted);
+      font-size: .78rem;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .debug-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .debug-toggle {
+      width: 100%;
+      margin: 0;
+      padding: 12px;
+      min-height: 46px;
+      background: var(--panel);
+      color: var(--text);
+      border: 0;
+      text-align: left;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .debug-toggle::after {
+      content: "öffnen";
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 600;
+    }
+
+    .debug-card.open .debug-toggle::after {
+      content: "schließen";
+    }
+
+    .debug-content {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding: 10px;
+    }
+
+    .debug-card.open .debug-content {
+      display: block;
+    }
+
+    #debugLog {
+      margin: 0;
+      color: var(--muted);
+      font-size: .78rem;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+
+    .history-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(134, 239, 172, .16);
+      color: var(--ok);
+      font-size: .68rem;
+      font-weight: 800;
+      vertical-align: middle;
+    }
+
+    .data-fallback-message {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .data-fallback-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    .data-fallback-actions button {
+      margin: 0;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20000;
+      background: rgba(2, 6, 23, .72);
+      display: none;
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open {
+      display: block;
+    }
+
+    .settings-page {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      overflow: hidden;
+    }
+
+    .settings-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 14px;
+      background: linear-gradient(135deg, #111827, #0f172a);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .settings-head h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .settings-close {
+      width: 44px;
+      min-height: 40px;
+      margin: 0;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+
+    .settings-body {
+      padding: 14px;
+    }
+
+    .settings-section {
+      padding: 12px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 12px;
+    }
+
+    .settings-section h3 {
+      margin: 0 0 8px;
+      font-size: .96rem;
+    }
+
+    select {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 1rem;
+    }
+
+    .expert-toggle {
+      margin-top: 8px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      font-weight: 800;
+    }
+
+    .expert-fields {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .expert-fields.open {
+      display: block;
+    }
+
+    .settings-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    .settings-actions button {
+      margin: 0;
+    }
+
+    .secondary-btn {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+
+    .factor-controls {
+      display: grid;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .factor-control {
+      padding: 12px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .factor-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      color: var(--text);
+      font-size: .9rem;
+      font-weight: 800;
+    }
+
+    .factor-head output {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .factor-control input[type="range"] {
+      width: 100%;
+      min-height: 32px;
+      padding: 0;
+      margin-top: 8px;
+      accent-color: var(--accent);
+      background: transparent;
+      border: 0;
+    }
+
+    .factor-control small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      line-height: 1.3;
+      font-size: .78rem;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.35;
+      margin: 8px 0 0;
+    }
+
+    /* Detailwerte: kompakte 2-Spalten-Darstellung mit mehr Abstand */
+    details.cards.main-section {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 20px 14px !important;
+      padding: 16px 12px !important;
+      align-items: stretch !important;
+    }
+
+    details.cards.main-section > summary {
+      grid-column: 1 / -1 !important;
+      margin: -16px -12px 0 !important;
+    }
+
+    details.cards.main-section:not([open]) > .card {
+      display: none !important;
+    }
+
+    details.cards.main-section[open] > .card {
+      display: flex !important;
+      min-height: 88px !important;
+      padding: 16px 14px !important;
+      margin: 0 !important;
+      justify-content: center !important;
+    }
+
+    details.cards.main-section[open] > .card.full {
+      grid-column: 1 / -1 !important;
+    }
+
+    @media (min-width: 820px) {
+      .layout {
+        grid-template-columns: 360px 1fr;
+        align-items: start;
+      }
+
+      .panel {
+        grid-row: span 3;
+        position: sticky;
+        top: 10px;
+      }
+
+      #map {
+        height: 500px;
+        min-height: 500px;
+      }
+    }
+  
+    .cards {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 20px !important;
+    }
+
+    .cards .card {
+      display: block !important;
+    }
+
+
+    .service-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .service-consent-row {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .service-consent-row input {
+      width: 22px;
+      min-height: 22px;
+      margin: 2px 0 0;
+      accent-color: var(--accent);
+    }
+
+    .service-consent-row label {
+      margin: 0;
+      color: var(--text);
+      font-size: .92rem;
+      line-height: 1.3;
+    }
+
+    .service-consent-row small {
+      display: block;
+      color: var(--muted);
+      margin-top: 3px;
+      font-size: .78rem;
+      line-height: 1.35;
+    }
+
+    .service-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.4;
+    }
+
+</style>
+</head>
+
+<body>
+  <header>
+    <h1>E-Auto Verbrauchsrechner</h1>
+    <p class="subtitle">Mit Höhenprofil, Wetter, Max-Speed und Low-Speed-Verbrauchsmodell.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <label for="start">Startadresse oder POI</label>
+      <div class="input-row">
+        <div class="autocomplete">
+          <input id="start" value="" autocomplete="off" placeholder="Abfahrtsort" />
+          <div id="startSuggestions" class="suggestions" role="listbox"></div>
+        </div>
+        <button id="clearStartBtn" class="clear-btn" type="button" aria-label="Startadresse löschen">×</button>
+      </div>
+
+      <button id="swapBtn" class="swap-btn" type="button">⇅ Start und Ziel tauschen</button>
+
+      <label for="via">Über / Route führen über</label>
+      <div class="input-row">
+        <div class="autocomplete">
+          <input id="via" autocomplete="off" placeholder="optional, z.B. Semmering" />
+          <div id="viaSuggestions" class="suggestions" role="listbox"></div>
+        </div>
+        <button id="clearViaBtn" class="clear-btn" type="button" aria-label="Über-Adresse löschen">×</button>
+      </div>
+
+      <label for="ziel">Zieladresse oder POI</label>
+      <div class="input-row">
+        <div class="autocomplete">
+          <input id="ziel" value="" autocomplete="off" placeholder="Zielort" />
+          <div id="zielSuggestions" class="suggestions" role="listbox"></div>
+        </div>
+        <button id="clearZielBtn" class="clear-btn" type="button" aria-label="Zieladresse löschen">×</button>
+      </div>
+
+      <section class="route-options">
+        <div class="grid2">
+          <div>
+            <label for="startDateTime">Startdatum & Uhrzeit</label>
+            <div class="datetime-row">
+              <input id="startDateTime" type="datetime-local" />
+              <button id="weatherRefreshBtn" class="weather-refresh-btn" type="button" title="Wetter von Meteoblue laden" aria-label="Wetter von Meteoblue laden">↻</button>
+            </div>
+
+            <div style="margin-top:8px;">
+              <label for="temp">Temperatur °C</label>
+              <input id="temp" type="number" inputmode="decimal" value="20" step="1" />
+            </div>
+          </div>
+        </div>
+        <div class="small-note">Temperatur wird bei der Routenberechnung aus diesem Feld verwendet. Mit ↻ kann sie vorher von Meteoblue geladen werden.</div>
+      </section>
+
+      <div class="grid2">
+        <div>
+          <label for="maxSpeed">Max. Geschwindigkeit</label>
+          <select id="maxSpeed">
+            <option value="0" selected>keine Begrenzung</option>
+            <option value="80">80 km/h</option>
+            <option value="90">90 km/h</option>
+            <option value="100">100 km/h</option>
+            <option value="110">110 km/h</option>
+            <option value="120">120 km/h</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="small-note">Max. Geschwindigkeit beeinflusst Fahrzeit und Verbrauchsmodell.</div>
+
+      <button id="settingsOpenBtn" class="settings-open-btn" type="button">⚙ Fahrzeug & Parameter einstellen</button>
+      <div id="vehicleSummary" class="vehicle-summary"></div>
+
+      <button id="routeBtn" type="button">Route berechnen</button>
+
+      <div class="progress-wrap" aria-label="Berechnungsfortschritt">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+
+      <div id="status" class="status">Bereit.</div>
+
+      <details class="main-section" open>
+        <summary>Kurzüberblick</summary>
+        <div class="section-body">
+          <div class="primary-results">
+            <div class="compact-card"><span>Distanz</span><strong id="distanceMini">–</strong></div>
+            <div class="compact-card"><span>Verbrauch / 100 km</span><strong id="consumptionMini">–</strong></div>
+            <div class="compact-card"><span>Fahrzeit</span><strong id="durationMini">–</strong></div>
+            <div class="compact-card"><span>Akku</span><strong id="batteryMini">–</strong></div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="map-card">
+      <div class="map-title">
+        <span>Karte: zoomen, verschieben, Route automatisch einpassen</span>
+        <span id="mapState">bereit</span>
+      </div>
+      <div id="map"></div>
+      <div class="map-actions">
+        <button id="fitBtn" type="button">Route einpassen</button>
+        <button id="locateBtn" type="button">Meine Position</button>
+      </div>
+    </section>
+
+    <details class="cards main-section" open>
+      <summary>Detailwerte</summary>
+      <div class="card">
+        <span>Distanz</span>
+        <strong id="distance">–</strong>
+      </div>
+      <div class="card">
+        <span>Fahrzeit</span>
+        <strong id="duration">–</strong>
+      </div>
+      <div class="card">
+        <span>Ø Geschwindigkeit</span>
+        <strong id="avgSpeed">–</strong>
+      </div>
+      <div class="card">
+        <span>Schätzung Verbrauch</span>
+        <strong id="consumption">–</strong>
+      </div>
+      <div class="card">
+        <span>Akku / Reichweite</span>
+        <strong id="batteryRange">–</strong>
+      </div>
+      <div class="card">
+        <span>Aufstieg</span>
+        <strong id="ascent">–</strong>
+      </div>
+      <div class="card">
+        <span>Gefälle</span>
+        <strong id="descent">–</strong>
+      </div>
+      <div class="card full">
+        <span>Diagnose</span>
+        <strong id="diagnosis">Noch keine Route berechnet.</strong>
+      </div>
+    </details>
+
+    <section class="debug-card" id="debugCard">
+      <button id="debugToggle" class="debug-toggle" type="button">Technische Meldungen</button>
+      <div class="debug-content">
+        <pre id="debugLog"></pre>
+      </div>
+    </section>
+  </main>
+
+
+  <div id="serviceConsentModal" class="modal-backdrop" aria-hidden="true">
+    <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="serviceConsentTitle">
+      <div class="settings-head">
+        <h2 id="serviceConsentTitle">Service-Zustimmung</h2>
+      </div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Benötigte Dienste für Routing und Verbrauchsberechnung</h3>
+          <p class="hint">Bitte bestätige die Nutzung der externen Dienste. Danach werden Karte, Adresssuche, Routing, Höhenprofil und Wetterdaten initialisiert. Die Zustimmung wird lokal im Browser gespeichert.</p>
+
+          <div class="service-list">
+            <div class="service-consent-row">
+              <input id="consentTiles" type="checkbox" />
+              <label for="consentTiles">OpenStreetMap / Leaflet-Kartenkacheln<small>Lädt Kartenanzeige und Kartendaten zur Darstellung der Route.</small></label>
+            </div>
+            <div class="service-consent-row">
+              <input id="consentNominatim" type="checkbox" />
+              <label for="consentNominatim">Nominatim Adresssuche<small>Wandelt Start-, Ziel- und Via-Adressen in Koordinaten um.</small></label>
+            </div>
+            <div class="service-consent-row">
+              <input id="consentOsrm" type="checkbox" />
+              <label for="consentOsrm">OSRM Routing<small>Berechnet Strecke, Fahrzeit und Streckengeometrie.</small></label>
+            </div>
+            <div class="service-consent-row">
+              <input id="consentElevation" type="checkbox" />
+              <label for="consentElevation">Open-Meteo / Open-Elevation / OpenTopoData<small>Lädt Höhendaten für Steigung, Gefälle und potentielle Energie.</small></label>
+            </div>
+            <div class="service-consent-row">
+              <input id="consentMeteoblue" type="checkbox" />
+              <label for="consentMeteoblue">Meteoblue Wetterdaten<small>Lädt optional die Starttemperatur für die Verbrauchsrechnung.</small></label>
+            </div>
+            <div class="service-consent-row">
+              <input id="consentGeolocation" type="checkbox" />
+              <label for="consentGeolocation">Browser-Standortfreigabe<small>Nur für „Meine Position“. Der Browser zeigt hierfür ggf. zusätzlich seinen eigenen Standortdialog an.</small></label>
+            </div>
+          </div>
+
+          <p class="service-note">Hinweis: Browser-Sicherheitsabfragen, insbesondere Standort, können nur durch eine Nutzeraktion ausgelöst werden. Diese App stößt die Standortfreigabe beim Klick auf „Zustimmen“ an; die Entscheidung bleibt im Browser gespeichert.</p>
+        </section>
+      </div>
+
+      <div class="settings-actions">
+        <button id="serviceConsentAllBtn" class="secondary-btn" type="button">Alle auswählen</button>
+        <button id="serviceConsentSaveBtn" type="button" disabled>Zustimmen & initialisieren</button>
+      </div>
+    </section>
+  </div>
+
+
+  <div id="dataFallbackModal" class="modal-backdrop" aria-hidden="true">
+    <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="dataFallbackTitle">
+      <div class="settings-head">
+        <h2 id="dataFallbackTitle">Zusatzdaten konnten nicht geladen werden</h2>
+      </div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3 id="dataFallbackHeading">Datenquelle nicht verfügbar</h3>
+          <p id="dataFallbackMessage" class="data-fallback-message"></p>
+          <p class="hint">Ohne diese Zusatzdaten kann die Berechnung fortgesetzt werden, wird aber ungenauer. Alternativ kann die App den Abruf erneut versuchen.</p>
+        </section>
+      </div>
+
+      <div class="data-fallback-actions">
+        <button id="dataFallbackContinueBtn" class="secondary-btn" type="button">Ohne diese Werte weiterrechnen</button>
+        <button id="dataFallbackRetryBtn" type="button">Erneut versuchen</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="settingsModal" class="modal-backdrop" aria-hidden="true">
+    <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="settings-head">
+        <h2 id="settingsTitle">Fahrzeug & Verbrauchsparameter</h2>
+        <button id="settingsCloseBtn" class="settings-close" type="button" aria-label="Einstellungen schließen">×</button>
+      </div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Einfacher Modus</h3>
+          <label for="vehicleSelect">Fahrzeug wählen</label>
+          <select id="vehicleSelect"></select>
+          <button id="addVehicleOpenBtn" class="add-vehicle-btn" type="button">+ Eigenes Fahrzeug anlegen</button>
+          <p class="hint">Die App übernimmt sinnvolle Startwerte inklusive Standardverbrauch und nutzbarer Akku-Kapazität.</p>
+        </section>
+
+        <section class="settings-section">
+          <h3>Verwendete Basiswerte</h3>
+          <div class="grid2">
+            <div>
+              <label for="settingsBasis">Basisverbrauch kWh/100 km</label>
+              <input id="settingsBasis" type="number" inputmode="decimal" step="0.1" />
+            </div>
+            <div>
+              <label for="settingsMass">Fahrzeugmasse inkl. Beladung kg</label>
+              <input id="settingsMass" type="number" inputmode="numeric" step="10" />
+            </div>
+          </div>
+          <label for="settingsBattery">Nutzbare Akku-Kapazität kWh</label>
+          <input id="settingsBattery" type="number" inputmode="decimal" step="0.1" />
+        </section>
+
+        <section class="settings-section">
+          <h3>Fortgeschritten</h3>
+          <button id="expertToggleBtn" class="expert-toggle" type="button">Expertenparameter anzeigen</button>
+
+          <div id="expertFields" class="expert-fields">
+            <p class="hint">Jeder Regler steuert, wie stark der jeweilige Faktor in die Verbrauchsberechnung eingeht. 100 % entspricht der Standardannahme, niedrigere Werte schwächen den Faktor ab, höhere Werte verstärken ihn.</p>
+
+            <div class="factor-controls">
+              <div class="factor-control">
+                <div class="factor-head"><span>Basis / Fahrzeug-Kalibrierung</span><output id="factorBaseOut">100 %</output></div>
+                <input id="factorBase" type="range" min="60" max="150" step="2" value="100" />
+                <small>Skaliert den gewählten Basisverbrauch. Nutze diesen Regler, um den Rechner auf deinen realen Durchschnittsverbrauch zu kalibrieren.</small>
+              </div>
+
+              <div class="factor-control">
+                <div class="factor-head"><span>Geschwindigkeitskurve</span><output id="factorSpeedOut">250 %</output></div>
+                <input id="factorSpeed" type="range" min="0" max="300" step="5" value="250" />
+                <small>Bestimmt die quadratische Geschwindigkeitskurve: 30-65 km/h bleibt nahezu neutral. Erst oberhalb von ca. 65 km/h steigt der Verbrauch nach v² deutlich an. Der Regler skaliert diese Abweichung: 0 % = fast neutral, 100 % = realistische Standardkurve, 300 % = sehr starke Autobahn-Sensitivität.</small>
+              </div>
+
+              <div class="factor-control">
+                <div class="factor-head"><span>Temperaturkurve</span><output id="factorTemperatureOut">110 %</output></div>
+                <input id="factorTemperature" type="range" min="0" max="220" step="2" value="110" />
+                <small>Steuert den Mehrverbrauch bei Kälte und Hitze. 0 % ignoriert Temperatur, höhere Werte verstärken Heiz-, Klima- und Akkuverluste.</small>
+              </div>
+
+              <div class="factor-control">
+                <div class="factor-head"><span>Steigungskurve</span><output id="factorElevationOut">100 %</output></div>
+                <input id="factorElevation" type="range" min="0" max="220" step="2" value="100" />
+                <small>Steuert den Zusatzverbrauch durch Netto-Steigung und echte Profilwellen. Dies ist der primäre Höhenparameter.</small>
+              </div>
+
+              <div class="factor-control">
+                <div class="factor-head"><span>Bergab / Rekuperation</span><output id="factorRegenOut">100 %</output></div>
+                <input id="factorRegen" type="range" min="0" max="180" step="2" value="100" />
+                <small>Steuert, wie stark bergab Energie gutgeschrieben wird. Niedrige Werte passen Fahrzeuge oder Fahrstile mit wenig Rekuperation an.</small>
+              </div>
+
+            <p class="hint">Tipp: Zuerst Basisverbrauch auf deinen realen Langzeitwert einstellen, dann Geschwindigkeit, Temperatur und Steigung mit bekannten Vergleichsfahrten feinjustieren.</p>
+          </div>
+        </section>
+      </div>
+
+      <div class="settings-actions">
+        <button id="settingsResetBtn" class="secondary-btn" type="button">Standard</button>
+        <button id="settingsSaveBtn" type="button">Übernehmen</button>
+        <button id="settingsExportBtn" class="secondary-btn" type="button">Config exportieren</button>
+        <button id="settingsImportBtn" class="secondary-btn" type="button">Config importieren</button>
+        <input id="settingsImportFile" type="file" accept="application/json,.json" style="display:none" />
+      </div>
+    </section>
+  </div>
+
+  <div id="customVehicleModal" class="modal-backdrop" aria-hidden="true">
+    <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="customVehicleTitle">
+      <div class="settings-head">
+        <h2 id="customVehicleTitle">Eigenes Fahrzeug anlegen</h2>
+        <button id="customVehicleCloseBtn" class="settings-close" type="button" aria-label="Formular schließen">×</button>
+      </div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Basisdaten</h3>
+          <div class="grid2">
+            <div>
+              <label for="customBrand">Marke</label>
+              <input id="customBrand" placeholder="z.B. Tesla" />
+            </div>
+            <div>
+              <label for="customModel">Modell / Typ</label>
+              <input id="customModel" placeholder="z.B. Model 3 LR" />
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <label for="customBasis">Standardverbrauch kWh/100 km</label>
+              <input id="customBasis" type="number" inputmode="decimal" step="0.1" value="18" />
+            </div>
+            <div>
+              <label for="customBattery">Nutzbare Akku-Kapazität kWh</label>
+              <input id="customBattery" type="number" inputmode="decimal" step="0.1" value="60" />
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <label for="customMass">Masse inkl. Beladung kg</label>
+              <input id="customMass" type="number" inputmode="numeric" step="10" value="2000" />
+            </div>
+            <div>
+              <label for="customRegen">Rekuperation %</label>
+              <input id="customRegen" type="number" inputmode="decimal" step="1" value="45" />
+            </div>
+          </div>
+
+          <p class="hint">Nach dem Speichern wird das Fahrzeug lokal in dieser HTML-Sitzung zur Auswahl hinzugefügt und sofort verwendet.</p>
+        </section>
+      </div>
+
+      <div class="settings-actions">
+        <button id="customVehicleCancelBtn" class="secondary-btn" type="button">Abbrechen</button>
+        <button id="customVehicleSaveBtn" type="button">Fahrzeug speichern</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="meteoKeyModal" class="modal-backdrop" aria-hidden="true">
+    <section class="settings-page" role="dialog" aria-modal="true" aria-labelledby="meteoKeyTitle">
+      <div class="settings-head">
+        <h2 id="meteoKeyTitle">Meteoblue API-Key erforderlich</h2>
+        <button id="meteoKeyCloseBtn" class="settings-close" type="button" aria-label="Fenster schließen">×</button>
+      </div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Neuen Key speichern</h3>
+          <p class="hint">Der bisher gespeicherte Key konnte nicht verwendet werden. Bitte neuen Meteoblue API-Key eintragen. Er wird lokal im Browser gespeichert und nicht auf der Hauptseite angezeigt.</p>
+          <label for="meteoKeyInput">Meteoblue API-Key</label>
+          <input id="meteoKeyInput" type="password" autocomplete="off" placeholder="API-Key eintragen" />
+        </section>
+      </div>
+
+      <div class="settings-actions">
+        <button id="meteoKeyCancelBtn" class="secondary-btn" type="button">Abbrechen</button>
+        <button id="meteoKeySaveBtn" type="button">Key speichern</button>
+      </div>
+    </section>
+  </div>
+
+
+  <script>
+    "use strict";
+
+    const $ = (id) => document.getElementById(id);
+
+    let map;
+    let routeLayer = null;
+    let routeBounds = null;
+    let markers = [];
+    let selectedPlaces = { start: null, via: null, ziel: null };
+
+    let vehiclePresets = [
+      { id:"generic-compact", brand:"Allgemein", model:"Kompakt / effizient", basisKwh100:15.5, batteryKwh:58, massKg:1750, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.75 },
+      { id:"generic-suv", brand:"Allgemein", model:"SUV / Crossover", basisKwh100:19.5, batteryKwh:75, massKg:2150, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.85 },
+      { id:"generic-large", brand:"Allgemein", model:"Großes Fahrzeug / Van", basisKwh100:23.0, batteryKwh:90, massKg:2500, driveEffPercent:84, regenEffPercent:42, coldPenaltyPercentPerC:1.7, heatPenaltyPercentPerC:0.8, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.95 },
+
+      { id:"tesla-model-3-rwd", brand:"Tesla", model:"Model 3 RWD", basisKwh100:14.5, batteryKwh:57.5, massKg:1800, driveEffPercent:88, regenEffPercent:52, coldPenaltyPercentPerC:1.4, heatPenaltyPercentPerC:0.5, speedThresholdKmh:95, speedPenaltyPercentPerKmh:0.72 },
+      { id:"tesla-model-3-lr", brand:"Tesla", model:"Model 3 Long Range", basisKwh100:15.5, batteryKwh:75, massKg:1900, driveEffPercent:88, regenEffPercent:52, coldPenaltyPercentPerC:1.4, heatPenaltyPercentPerC:0.5, speedThresholdKmh:95, speedPenaltyPercentPerKmh:0.72 },
+      { id:"tesla-model-y-rwd", brand:"Tesla", model:"Model Y RWD", basisKwh100:16.5, batteryKwh:57.5, massKg:2000, driveEffPercent:87, regenEffPercent:50, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:92, speedPenaltyPercentPerKmh:0.80 },
+      { id:"tesla-model-y-lr", brand:"Tesla", model:"Model Y Long Range", basisKwh100:17.5, batteryKwh:75, massKg:2100, driveEffPercent:87, regenEffPercent:50, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:92, speedPenaltyPercentPerKmh:0.80 },
+      { id:"tesla-model-s", brand:"Tesla", model:"Model S", basisKwh100:18.5, batteryKwh:95, massKg:2250, driveEffPercent:88, regenEffPercent:52, coldPenaltyPercentPerC:1.4, heatPenaltyPercentPerC:0.5, speedThresholdKmh:100, speedPenaltyPercentPerKmh:0.78 },
+      { id:"tesla-model-x", brand:"Tesla", model:"Model X", basisKwh100:22.0, batteryKwh:95, massKg:2550, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.7, speedThresholdKmh:92, speedPenaltyPercentPerKmh:0.95 },
+
+      { id:"vw-id3-58", brand:"Volkswagen", model:"ID.3 58 kWh", basisKwh100:16.0, batteryKwh:58, massKg:1850, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.78 },
+      { id:"vw-id3-77", brand:"Volkswagen", model:"ID.3 77 kWh", basisKwh100:16.5, batteryKwh:77, massKg:1950, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.78 },
+      { id:"vw-id4", brand:"Volkswagen", model:"ID.4", basisKwh100:18.5, batteryKwh:77, massKg:2200, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.86 },
+      { id:"vw-id5", brand:"Volkswagen", model:"ID.5", basisKwh100:18.5, batteryKwh:77, massKg:2200, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.86 },
+      { id:"vw-id7", brand:"Volkswagen", model:"ID.7", basisKwh100:16.5, batteryKwh:77, massKg:2250, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:95, speedPenaltyPercentPerKmh:0.78 },
+      { id:"vw-idbuzz", brand:"Volkswagen", model:"ID. Buzz", basisKwh100:23.5, batteryKwh:77, massKg:2650, driveEffPercent:84, regenEffPercent:42, coldPenaltyPercentPerC:1.7, heatPenaltyPercentPerC:0.8, speedThresholdKmh:85, speedPenaltyPercentPerKmh:1.0 },
+
+      { id:"skoda-enyaq", brand:"Skoda", model:"Enyaq", basisKwh100:18.5, batteryKwh:77, massKg:2200, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.86 },
+      { id:"audi-q4-etron", brand:"Audi", model:"Q4 e-tron", basisKwh100:19.0, batteryKwh:77, massKg:2250, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.88 },
+      { id:"audi-q8-etron", brand:"Audi", model:"Q8 e-tron", basisKwh100:24.0, batteryKwh:106, massKg:2650, driveEffPercent:84, regenEffPercent:44, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.8, speedThresholdKmh:90, speedPenaltyPercentPerKmh:1.0 },
+
+      { id:"hyundai-ioniq5", brand:"Hyundai", model:"Ioniq 5", basisKwh100:18.0, batteryKwh:77.4, massKg:2150, driveEffPercent:86, regenEffPercent:49, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.84 },
+      { id:"hyundai-ioniq6", brand:"Hyundai", model:"Ioniq 6", basisKwh100:15.5, batteryKwh:77.4, massKg:2050, driveEffPercent:87, regenEffPercent:50, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:95, speedPenaltyPercentPerKmh:0.74 },
+      { id:"hyundai-kona", brand:"Hyundai", model:"Kona Electric", basisKwh100:15.8, batteryKwh:64.8, massKg:1800, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.78 },
+      { id:"kia-ev3", brand:"Kia", model:"EV3", basisKwh100:16.0, batteryKwh:78, massKg:1900, driveEffPercent:86, regenEffPercent:49, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.78 },
+      { id:"kia-niro-ev", brand:"Kia", model:"Niro EV", basisKwh100:16.5, batteryKwh:64.8, massKg:1850, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.80 },
+      { id:"kia-ev6", brand:"Kia", model:"EV6", basisKwh100:18.0, batteryKwh:77.4, massKg:2150, driveEffPercent:86, regenEffPercent:49, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.84 },
+      { id:"kia-ev9", brand:"Kia", model:"EV9", basisKwh100:24.0, batteryKwh:96, massKg:2750, driveEffPercent:84, regenEffPercent:42, coldPenaltyPercentPerC:1.7, heatPenaltyPercentPerC:0.8, speedThresholdKmh:85, speedPenaltyPercentPerKmh:1.05 },
+
+      { id:"bmw-i3", brand:"BMW", model:"i3", basisKwh100:15.0, batteryKwh:37.9, massKg:1450, driveEffPercent:87, regenEffPercent:50, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.75 },
+      { id:"bmw-i4", brand:"BMW", model:"i4", basisKwh100:18.0, batteryKwh:81, massKg:2200, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:92, speedPenaltyPercentPerKmh:0.82 },
+      { id:"bmw-ix1", brand:"BMW", model:"iX1", basisKwh100:18.5, batteryKwh:64.7, massKg:2150, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.86 },
+      { id:"bmw-ix3", brand:"BMW", model:"iX3", basisKwh100:19.0, batteryKwh:73.8, massKg:2250, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.88 },
+      { id:"bmw-ix", brand:"BMW", model:"iX", basisKwh100:22.0, batteryKwh:105, massKg:2600, driveEffPercent:84, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.8, speedThresholdKmh:90, speedPenaltyPercentPerKmh:1.0 },
+
+      { id:"mercedes-eqa", brand:"Mercedes-Benz", model:"EQA", basisKwh100:18.5, batteryKwh:66.5, massKg:2150, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.86 },
+      { id:"mercedes-eqb", brand:"Mercedes-Benz", model:"EQB", basisKwh100:20.0, batteryKwh:66.5, massKg:2300, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:88, speedPenaltyPercentPerKmh:0.92 },
+      { id:"mercedes-eqc", brand:"Mercedes-Benz", model:"EQC", basisKwh100:23.0, batteryKwh:80, massKg:2500, driveEffPercent:84, regenEffPercent:43, coldPenaltyPercentPerC:1.7, heatPenaltyPercentPerC:0.8, speedThresholdKmh:88, speedPenaltyPercentPerKmh:1.0 },
+      { id:"mercedes-eqe", brand:"Mercedes-Benz", model:"EQE", basisKwh100:18.5, batteryKwh:90.6, massKg:2450, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:95, speedPenaltyPercentPerKmh:0.82 },
+      { id:"mercedes-eqs", brand:"Mercedes-Benz", model:"EQS", basisKwh100:19.5, batteryKwh:107.8, massKg:2600, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.7, speedThresholdKmh:95, speedPenaltyPercentPerKmh:0.86 },
+
+      { id:"renault-zoe", brand:"Renault", model:"Zoe", basisKwh100:15.8, batteryKwh:52, massKg:1600, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.78 },
+      { id:"renault-megane", brand:"Renault", model:"Megane E-Tech", basisKwh100:16.5, batteryKwh:60, massKg:1800, driveEffPercent:86, regenEffPercent:47, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.80 },
+      { id:"renault-scenic", brand:"Renault", model:"Scenic E-Tech", basisKwh100:17.5, batteryKwh:87, massKg:2050, driveEffPercent:86, regenEffPercent:47, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.84 },
+      { id:"peugeot-e208", brand:"Peugeot", model:"e-208", basisKwh100:15.5, batteryKwh:51, massKg:1650, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.78 },
+      { id:"peugeot-e2008", brand:"Peugeot", model:"e-2008", basisKwh100:17.0, batteryKwh:51, massKg:1750, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.84 },
+      { id:"opel-corsa-e", brand:"Opel", model:"Corsa Electric", basisKwh100:15.8, batteryKwh:51, massKg:1650, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.78 },
+      { id:"opel-mokka-e", brand:"Opel", model:"Mokka Electric", basisKwh100:17.0, batteryKwh:51, massKg:1750, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.84 },
+
+      { id:"nissan-leaf-40", brand:"Nissan", model:"Leaf 40 kWh", basisKwh100:16.5, batteryKwh:39, massKg:1650, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.82 },
+      { id:"nissan-leaf-62", brand:"Nissan", model:"Leaf e+ 62 kWh", basisKwh100:17.5, batteryKwh:59, massKg:1800, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:85, speedPenaltyPercentPerKmh:0.86 },
+      { id:"nissan-ariya", brand:"Nissan", model:"Ariya", basisKwh100:19.5, batteryKwh:87, massKg:2300, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.90 },
+
+      { id:"polestar-2", brand:"Polestar", model:"2", basisKwh100:18.5, batteryKwh:79, massKg:2200, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:92, speedPenaltyPercentPerKmh:0.84 },
+      { id:"volvo-ex30", brand:"Volvo", model:"EX30", basisKwh100:16.5, batteryKwh:64, massKg:1850, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.80 },
+      { id:"volvo-xc40", brand:"Volvo", model:"EX40 / XC40 Recharge", basisKwh100:20.5, batteryKwh:79, massKg:2300, driveEffPercent:85, regenEffPercent:46, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.95 },
+      { id:"mg4", brand:"MG", model:"MG4 Electric", basisKwh100:16.5, batteryKwh:61.7, massKg:1750, driveEffPercent:86, regenEffPercent:47, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.80 },
+      { id:"mg-zs-ev", brand:"MG", model:"ZS EV", basisKwh100:18.0, batteryKwh:68.3, massKg:1850, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:88, speedPenaltyPercentPerKmh:0.88 },
+      { id:"byd-atto3", brand:"BYD", model:"Atto 3", basisKwh100:17.5, batteryKwh:60.5, massKg:1850, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:88, speedPenaltyPercentPerKmh:0.86 },
+      { id:"byd-seal", brand:"BYD", model:"Seal", basisKwh100:16.5, batteryKwh:82.5, massKg:2150, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:92, speedPenaltyPercentPerKmh:0.82 },
+      { id:"cupra-born", brand:"Cupra", model:"Born", basisKwh100:16.5, batteryKwh:58, massKg:1850, driveEffPercent:86, regenEffPercent:48, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.6, speedThresholdKmh:90, speedPenaltyPercentPerKmh:0.78 },
+      { id:"fiat-500e", brand:"Fiat", model:"500e", basisKwh100:14.5, batteryKwh:37.3, massKg:1450, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:80, speedPenaltyPercentPerKmh:0.75 },
+      { id:"mini-cooper-se", brand:"MINI", model:"Cooper SE", basisKwh100:15.5, batteryKwh:28.9, massKg:1500, driveEffPercent:85, regenEffPercent:45, coldPenaltyPercentPerC:1.6, heatPenaltyPercentPerC:0.7, speedThresholdKmh:80, speedPenaltyPercentPerKmh:0.78 },
+      { id:"porsche-taycan", brand:"Porsche", model:"Taycan", basisKwh100:22.0, batteryKwh:83.7, massKg:2350, driveEffPercent:86, regenEffPercent:50, coldPenaltyPercentPerC:1.5, heatPenaltyPercentPerC:0.7, speedThresholdKmh:100, speedPenaltyPercentPerKmh:0.95 }
+    ];
+
+    const STORAGE_KEY = "ev_route_calc_config_v1";
+    const DEFAULT_METEOBLUE_KEY = "pnKg8VuCcrPle7AR";
+    let vehicleSettings = { ...vehiclePresets[0] };
+    let appConfig = {
+      vehicleId: vehicleSettings.id,
+      vehicleSettings,
+      customVehicles: [],
+      maxSpeed: "120",
+      meteoblueKey: DEFAULT_METEOBLUE_KEY,
+      basis: String(vehicleSettings.basisKwh100),
+      temp: "20",
+      serviceConsent: null,
+      addressHistory: [],
+      elevationRouteCache: []
+    };
+
+    const DEFAULT_FACTOR_SPEED_PERCENT = 250;
+    const DEFAULT_FACTOR_TEMPERATURE_PERCENT = 110;
+
+    function applyDefaultFactorValues(settings) {
+      if (!settings) return settings;
+      if (settings.factorSpeedPercent === undefined || settings.factorSpeedPercent === null) {
+        settings.factorSpeedPercent = DEFAULT_FACTOR_SPEED_PERCENT;
+      }
+      if (settings.factorTemperaturePercent === undefined || settings.factorTemperaturePercent === null) {
+        settings.factorTemperaturePercent = DEFAULT_FACTOR_TEMPERATURE_PERCENT;
+      }
+      return settings;
+    }
+
+    vehiclePresets.forEach(applyDefaultFactorValues);
+    applyDefaultFactorValues(vehicleSettings);
+    applyDefaultFactorValues(appConfig.vehicleSettings);
+
+    function logDebug(message) {
+      const log = $("debugLog");
+      const time = new Date().toLocaleTimeString();
+      log.textContent += `[${time}] ${message}\n`;
+    }
+
+    window.addEventListener("error", (event) => {
+      setStatus("JavaScript-Fehler: " + event.message, "error");
+      logDebug("JS error: " + event.message);
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+      const msg = event.reason?.message || String(event.reason);
+      setStatus("Fehler: " + msg, "error");
+      logDebug("Unhandled promise rejection: " + msg);
+    });
+
+    function setStatus(message, type = "") {
+      const el = $("status");
+      el.className = "status " + type;
+      el.textContent = message;
+    }
+
+    function setProgress(percent) {
+      $("progressBar").style.width = Math.max(0, Math.min(100, percent)) + "%";
+    }
+
+    function setResultDefaults() {
+      $("distance").textContent = "–";
+      $("duration").textContent = "–";
+      $("avgSpeed").textContent = "–";
+      $("consumption").textContent = "–";
+      $("batteryRange").textContent = "–";
+      $("distanceMini").textContent = "–";
+      $("durationMini").textContent = "–";
+      $("consumptionMini").textContent = "–";
+      $("batteryMini").textContent = "–";
+      $("ascent").textContent = "–";
+      $("descent").textContent = "–";
+      $("diagnosis").textContent = "Berechnung läuft …";
+    }
+
+    function formatKm(meters) {
+      return (meters / 1000).toFixed(1).replace(".", ",") + " km";
+    }
+
+    function formatDuration(seconds) {
+      const min = Math.round(seconds / 60);
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      return h ? `${h} h ${m} min` : `${m} min`;
+    }
+
+    function debounce(fn, delay = 350) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    const SERVICE_CONSENT_VERSION = 1;
+    let leafletAssetsPromise = null;
+
+    function hasServiceConsent() {
+      return appConfig.serviceConsent?.accepted === true &&
+        appConfig.serviceConsent?.version === SERVICE_CONSENT_VERSION;
+    }
+
+    function openServiceConsentModal() {
+      const modal = $("serviceConsentModal");
+      if (!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      updateServiceConsentButton();
+    }
+
+    function closeServiceConsentModal() {
+      const modal = $("serviceConsentModal");
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function serviceConsentCheckboxes() {
+      return [
+        "consentTiles",
+        "consentNominatim",
+        "consentOsrm",
+        "consentElevation",
+        "consentMeteoblue",
+        "consentGeolocation"
+      ].map(id => $(id)).filter(Boolean);
+    }
+
+    function updateServiceConsentButton() {
+      const btn = $("serviceConsentSaveBtn");
+      if (!btn) return;
+      btn.disabled = !serviceConsentCheckboxes().every(input => input.checked);
+    }
+
+    function assertServiceConsent() {
+      if (hasServiceConsent()) return true;
+      openServiceConsentModal();
+      throw new Error("Bitte zuerst der Nutzung der benötigten Dienste zustimmen.");
+    }
+
+    function loadLeafletAssets() {
+      if (typeof L !== "undefined") return Promise.resolve();
+      if (leafletAssetsPromise) return leafletAssetsPromise;
+
+      leafletAssetsPromise = new Promise((resolve, reject) => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        document.head.appendChild(css);
+
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Leaflet konnte nicht geladen werden."));
+        document.body.appendChild(script);
+      });
+
+      return leafletAssetsPromise;
+    }
+
+    function requestGeolocationPermissionOnce() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) {
+          logDebug("Geolocation nicht verfügbar.");
+          resolve(false);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            logDebug("Standortfreigabe verfügbar.");
+            resolve(true);
+          },
+          (err) => {
+            logDebug("Standortfreigabe nicht erteilt oder nicht verfügbar: " + err.message);
+            resolve(false);
+          },
+          { enableHighAccuracy: false, timeout: 7000, maximumAge: 600000 }
+        );
+      });
+    }
+
+    async function saveServiceConsentAndInitialize() {
+      if (!serviceConsentCheckboxes().every(input => input.checked)) {
+        setStatus("Bitte alle Dienste bestätigen, damit die App vollständig funktioniert.", "warn");
+        return;
+      }
+
+      const btn = $("serviceConsentSaveBtn");
+      btn.disabled = true;
+      btn.textContent = "Initialisiere …";
+      setStatus("Initialisiere Dienste …");
+
+      appConfig.serviceConsent = {
+        accepted: true,
+        version: SERVICE_CONSENT_VERSION,
+        acceptedAt: new Date().toISOString(),
+        services: {
+          tiles: true,
+          nominatim: true,
+          osrm: true,
+          elevation: true,
+          meteoblue: true,
+          geolocation: true
+        }
+      };
+      saveConfig();
+
+      try {
+        await loadLeafletAssets();
+        if (!map) initMap();
+        await requestGeolocationPermissionOnce();
+        closeServiceConsentModal();
+        setStatus("Dienste freigegeben und initialisiert.", "ok");
+      } catch (err) {
+        setStatus(err.message || String(err), "error");
+        logDebug("Service-Initialisierung fehlgeschlagen: " + (err.message || String(err)));
+      } finally {
+        btn.textContent = "Zustimmen & initialisieren";
+        updateServiceConsentButton();
+      }
+    }
+
+    async function fetchJson(url, errorMessage, options = {}) {
+      const controller = new AbortController();
+      const timeoutMs = options.timeoutMs || 18000;
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const res = await fetch(url, {
+          ...options.fetchOptions,
+          signal: controller.signal,
+          headers: {
+            "Accept": "application/json",
+            ...(options.fetchOptions?.headers || {})
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`${errorMessage}: HTTP ${res.status}`);
+        }
+
+        return await res.json();
+      } catch (err) {
+        if (err.name === "AbortError") {
+          throw new Error(`${errorMessage}: Zeitüberschreitung nach ${Math.round(timeoutMs / 1000)} s`);
+        }
+
+        if (err instanceof TypeError) {
+          throw new Error(`${errorMessage}: Netzwerk-/CORS-Fehler oder Dienst nicht erreichbar. Original: ${err.message}`);
+        }
+
+        throw err;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function nearestArrayIndexByDate(times, targetDate) {
+      let bestIndex = -1;
+      let bestDiff = Infinity;
+      times.forEach((time, index) => {
+        const d = new Date(time);
+        const diff = Math.abs(d.getTime() - targetDate.getTime());
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIndex = index;
+        }
+      });
+      return bestIndex;
+    }
+
+    function extractMeteoblueTemperature(data, targetDate) {
+      const candidates = [
+        { name: "data_1h", block: data?.data_1h },
+        { name: "data1h", block: data?.data1h },
+        { name: "basic_1h", block: data?.basic_1h },
+        { name: "basic1h", block: data?.basic1h },
+        { name: "root", block: data }
+      ];
+
+      for (const candidate of candidates) {
+        const block = candidate.block;
+        if (!block || typeof block !== "object") continue;
+
+        const timeField =
+          block.time ? "time" :
+          block.time_local ? "time_local" :
+          block.timestamp ? "timestamp" :
+          block.timestamps ? "timestamps" :
+          block.validdate ? "validdate" :
+          block.validdate_local ? "validdate_local" :
+          null;
+
+        const tempField =
+          block.temperature ? "temperature" :
+          block.temperature_2m ? "temperature_2m" :
+          block.temp ? "temp" :
+          block.Temperature ? "Temperature" :
+          null;
+
+        const times = timeField ? block[timeField] : null;
+        const temps = tempField ? block[tempField] : null;
+
+        if (Array.isArray(times) && Array.isArray(temps)) {
+          const index = nearestArrayIndexByDate(times, targetDate);
+          if (index >= 0 && temps[index] !== undefined) {
+            return {
+              temperature: Number(temps[index]),
+              matchedTime: times[index],
+              requestedTime: targetDate.toISOString(),
+              blockName: candidate.name,
+              timeField,
+              tempField,
+              index
+            };
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function getMeteoblueKey() {
+      return (appConfig.meteoblueKey || DEFAULT_METEOBLUE_KEY || "").trim();
+    }
+
+    function setMeteoblueKey(key) {
+      appConfig.meteoblueKey = String(key || "").trim();
+      saveConfig();
+    }
+
+    function openMeteoKeyModal(message = "") {
+      if (message) logDebug(message);
+      $("meteoKeyInput").value = "";
+      $("meteoKeyModal").classList.add("open");
+      $("meteoKeyModal").setAttribute("aria-hidden", "false");
+      setTimeout(() => $("meteoKeyInput").focus(), 50);
+    }
+
+    function closeMeteoKeyModal() {
+      $("meteoKeyModal").classList.remove("open");
+      $("meteoKeyModal").setAttribute("aria-hidden", "true");
+    }
+
+    function saveMeteoKeyFromModal() {
+      const key = $("meteoKeyInput").value.trim();
+      if (!key) {
+        setStatus("Bitte einen Meteoblue API-Key eintragen.", "error");
+        return;
+      }
+
+      setMeteoblueKey(key);
+      closeMeteoKeyModal();
+      setStatus("Meteoblue API-Key wurde gespeichert.", "ok");
+    }
+
+    async function fetchMeteoblueStartTemperature(startPlace) {
+      assertServiceConsent();
+      const key = getMeteoblueKey();
+      if (!key) {
+        openMeteoKeyModal("Kein Meteoblue API-Key gespeichert.");
+        throw new Error("Kein Meteoblue API-Key gespeichert.");
+      }
+
+      const dateValue = $("startDateTime").value;
+      if (!dateValue) throw new Error("Kein Startdatum mit Uhrzeit eingetragen.");
+
+      const targetDate = new Date(dateValue);
+      const url = new URL("https://my.meteoblue.com/packages/basic-1h");
+      url.searchParams.set("lat", String(startPlace.lat));
+      url.searchParams.set("lon", String(startPlace.lon));
+      url.searchParams.set("apikey", key);
+      url.searchParams.set("format", "json");
+      url.searchParams.set("temperature", "C");
+      url.searchParams.set("tz", "auto");
+
+      logDebug(`Meteoblue Anfrage: Paket basic-1h, lat=${startPlace.lat.toFixed(5)}, lon=${startPlace.lon.toFixed(5)}, Abfahrt=${dateValue}`);
+      let data;
+      try {
+        data = await fetchJson(url, "Meteoblue Temperaturabfrage fehlgeschlagen", { timeoutMs: 18000 });
+      } catch (err) {
+        openMeteoKeyModal("Meteoblue Zugriff fehlgeschlagen. Neuer API-Key kann eingetragen werden. Fehler: " + (err.message || String(err)));
+        throw err;
+      }
+      const meteo = extractMeteoblueTemperature(data, targetDate);
+
+      if (meteo && Number.isFinite(meteo.temperature)) {
+        $("temp").value = meteo.temperature.toFixed(1);
+        saveConfig();
+        logDebug(
+          `Meteoblue Daten verwendet: Block=${meteo.blockName}, Zeitfeld=${meteo.timeField}, Temperaturfeld=${meteo.tempField}, ` +
+          `Index=${meteo.index}, angefragte Zeit=${dateValue}, verwendete Modellzeit=${meteo.matchedTime}, Temperatur=${meteo.temperature.toFixed(1)} °C`
+        );
+        return meteo.temperature;
+      }
+
+      openMeteoKeyModal("Meteoblue Antwort konnte nicht ausgewertet werden. Eventuell ist der API-Key oder das Paket basic-1h nicht freigeschaltet.");
+      throw new Error("Meteoblue Antwort enthält keine erkennbare stündliche Temperatur.");
+    }
+
+
+    const ADDRESS_HISTORY_LIMIT = 12;
+    const ELEVATION_ROUTE_CACHE_LIMIT = 100;
+
+    function compactElevationPoint(point) {
+      const lat = Number(point?.lat);
+      const lon = Number(point?.lon);
+      const elevation = Number(point?.elevation);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(elevation)) return null;
+
+      return {
+        lat: Number(lat.toFixed(6)),
+        lon: Number(lon.toFixed(6)),
+        elevation: Number(elevation.toFixed(1)),
+        elevationSource: point.elevationSource || "Höhendaten-Cache"
+      };
+    }
+
+    function makeElevationRouteCacheKey(sampledPoints, routeDistance) {
+      const distanceBucket = Math.round(Number(routeDistance || 0) / 50) * 50;
+      const normalized = (sampledPoints || [])
+        .map(p => `${Number(p.lat).toFixed(5)},${Number(p.lon).toFixed(5)}`)
+        .join("|");
+      const input = `${distanceBucket}|${normalized}`;
+
+      // Kleiner stabiler Hash, damit der LocalStorage nicht mit langen Koordinaten-Keys gefüllt wird.
+      let hash = 2166136261;
+      for (let i = 0; i < input.length; i++) {
+        hash ^= input.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+
+      return `elev-${(hash >>> 0).toString(36)}-${sampledPoints.length}-${distanceBucket}`;
+    }
+
+    function getElevationRouteCacheList() {
+      const list = Array.isArray(appConfig.elevationRouteCache) ? appConfig.elevationRouteCache : [];
+      return list
+        .filter(entry => entry && typeof entry.key === "string" && Array.isArray(entry.points))
+        .sort((a, b) => Number(b.lastUsed || 0) - Number(a.lastUsed || 0));
+    }
+
+    function getCachedElevationRoute(sampledPoints, routeDistance) {
+      const key = makeElevationRouteCacheKey(sampledPoints, routeDistance);
+      const list = getElevationRouteCacheList();
+      const entry = list.find(item => item.key === key);
+
+      if (!entry) return { key, points: null, entry: null };
+
+      const points = entry.points.map(point => ({
+        lat: Number(point.lat),
+        lon: Number(point.lon),
+        elevation: Number(point.elevation),
+        rawElevation: Number(point.elevation),
+        elevationSource: entry.source || point.elevationSource || "Höhendaten-Cache"
+      }));
+
+      const valid = points.length === sampledPoints.length && points.every(p =>
+        Number.isFinite(p.lat) && Number.isFinite(p.lon) && Number.isFinite(p.elevation)
+      );
+
+      if (!valid) return { key, points: null, entry: null };
+
+      // LRU: Treffer nach vorne ziehen und dauerhaft speichern.
+      entry.lastUsed = Date.now();
+      appConfig.elevationRouteCache = [entry, ...list.filter(item => item.key !== key)].slice(0, ELEVATION_ROUTE_CACHE_LIMIT);
+      saveConfig();
+
+      return { key, points, entry };
+    }
+
+    function saveElevationRouteToCache(key, elevationPoints, routeDistance) {
+      const compactPoints = (elevationPoints || []).map(compactElevationPoint).filter(Boolean);
+      if (!key || !compactPoints.length) return;
+
+      const source = elevationPoints[0]?.elevationSource || "Höhendaten-API";
+      const entry = {
+        key,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+        routeDistanceM: Math.round(Number(routeDistance || 0)),
+        pointCount: compactPoints.length,
+        source,
+        points: compactPoints
+      };
+
+      const existing = getElevationRouteCacheList().filter(item => item.key !== key);
+      appConfig.elevationRouteCache = [entry, ...existing].slice(0, ELEVATION_ROUTE_CACHE_LIMIT);
+      saveConfig();
+      logDebug(`Höhenprofil im lokalen Cache gespeichert (${compactPoints.length} Punkte, max. ${ELEVATION_ROUTE_CACHE_LIMIT} Routen).`);
+    }
+
+    function normalizeAddressHistoryItem(item) {
+      if (!item) return null;
+      const name = String(item.name || item.display_name || "").trim();
+      const lat = Number(item.lat);
+      const lon = Number(item.lon);
+      if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return {
+        name,
+        display_name: name,
+        lat,
+        lon,
+        type: item.type || "Zuletzt verwendet",
+        address: item.address || {},
+        isHistory: true,
+        lastUsed: Number(item.lastUsed || Date.now())
+      };
+    }
+
+    function getAddressHistory() {
+      const list = Array.isArray(appConfig.addressHistory) ? appConfig.addressHistory : [];
+      return list.map(normalizeAddressHistoryItem).filter(Boolean).sort((a, b) => b.lastUsed - a.lastUsed);
+    }
+
+    function saveAddressToHistory(place) {
+      const item = normalizeAddressHistoryItem(place);
+      if (!item) return;
+
+      const existing = getAddressHistory().filter(old => {
+        const sameName = old.name.toLowerCase() === item.name.toLowerCase();
+        const veryClose = Math.abs(old.lat - item.lat) < 0.00002 && Math.abs(old.lon - item.lon) < 0.00002;
+        return !(sameName || veryClose);
+      });
+
+      appConfig.addressHistory = [{ ...item, lastUsed: Date.now() }, ...existing]
+        .slice(0, ADDRESS_HISTORY_LIMIT)
+        .map(({ name, lat, lon, type, address, lastUsed }) => ({ name, lat, lon, type, address, lastUsed }));
+
+      saveConfig();
+    }
+
+    function buildSuggestionsWithHistory(query, remoteItems) {
+      const q = String(query || "").trim().toLowerCase();
+      const historyMatches = getAddressHistory()
+        .filter(item => !q || item.name.toLowerCase().includes(q))
+        .slice(0, 5);
+
+      const seen = new Set(historyMatches.map(item => `${item.name.toLowerCase()}|${Number(item.lat).toFixed(5)}|${Number(item.lon).toFixed(5)}`));
+      const remote = (remoteItems || []).filter(item => {
+        const lat = Number(item.lat);
+        const lon = Number(item.lon);
+        const name = String(item.display_name || item.name || "").toLowerCase();
+        const key = `${name}|${lat.toFixed(5)}|${lon.toFixed(5)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      return [...historyMatches, ...remote];
+    }
+
+    function openDataFallbackDialog({ title, heading, message }) {
+      return new Promise(resolve => {
+        const modal = $("dataFallbackModal");
+        const titleEl = $("dataFallbackTitle");
+        const headingEl = $("dataFallbackHeading");
+        const messageEl = $("dataFallbackMessage");
+        const retryBtn = $("dataFallbackRetryBtn");
+        const continueBtn = $("dataFallbackContinueBtn");
+
+        if (!modal || !retryBtn || !continueBtn) {
+          resolve("continue");
+          return;
+        }
+
+        titleEl.textContent = title || "Zusatzdaten konnten nicht geladen werden";
+        headingEl.textContent = heading || "Datenquelle nicht verfügbar";
+        messageEl.textContent = message || "Ein externer Dienst konnte keine Daten liefern.";
+
+        function close(action) {
+          retryBtn.removeEventListener("click", onRetry);
+          continueBtn.removeEventListener("click", onContinue);
+          modal.classList.remove("open");
+          modal.setAttribute("aria-hidden", "true");
+          resolve(action);
+        }
+
+        function onRetry() { close("retry"); }
+        function onContinue() { close("continue"); }
+
+        retryBtn.addEventListener("click", onRetry);
+        continueBtn.addEventListener("click", onContinue);
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    }
+
+    async function fetchElevationsWithUserFallback(sampledPoints, routeDistance) {
+      const cached = getCachedElevationRoute(sampledPoints, routeDistance);
+      const cacheKey = cached.key;
+
+      if (cached.points) {
+        const elevation = analyzeElevation(cached.points);
+        const sourceName = cached.entry?.source || "Höhendaten-Cache";
+        elevation.fromCache = true;
+        elevation.cacheKey = cacheKey;
+        setStatus("Höhenprofil aus lokalem Speicher verwendet. API-Abruf übersprungen.", "ok");
+        logDebug(`Höhenprofil aus Cache (${sourceName}): +${Math.round(elevation.ascent)} m, -${Math.round(elevation.descent)} m, max. Steigung/Gefälle ca. ${elevation.maxGradePercent.toFixed(1)} %`);
+        return elevation;
+      }
+
+      while (true) {
+        try {
+          const elevationPoints = await fetchElevations(sampledPoints);
+          saveElevationRouteToCache(cacheKey, elevationPoints, routeDistance);
+          const elevation = analyzeElevation(elevationPoints);
+          elevation.fromCache = false;
+          elevation.cacheKey = cacheKey;
+          const sourceName = elevationPoints[0]?.elevationSource || "unbekannt";
+          logDebug(`Höhenprofil (${sourceName}): +${Math.round(elevation.ascent)} m, -${Math.round(elevation.descent)} m, max. Steigung/Gefälle ca. ${elevation.maxGradePercent.toFixed(1)} %`);
+          return elevation;
+        } catch (elevationErr) {
+          const msg = elevationErr?.message || String(elevationErr);
+          logDebug("Höhendaten nicht verfügbar: " + msg);
+          setStatus("Höhendaten konnten nicht geladen werden. Entscheidung erforderlich.", "warn");
+
+          const action = await openDataFallbackDialog({
+            title: "Höhendaten konnten nicht geladen werden",
+            heading: "Steigung und Gefälle fehlen",
+            message:
+              "Die Höhen-APIs konnten für diese Route keine verwertbaren Daten liefern.\n\n" +
+              msg +
+              "\n\nBitte entscheide, ob die App den Abruf erneut versuchen soll oder ob ohne Höhenprofil weitergerechnet werden darf."
+          });
+
+          if (action === "retry") {
+            setStatus("Versuche Höhendaten erneut zu laden …");
+            await sleep(400);
+            continue;
+          }
+
+          logDebug("Nutzerfreigabe: Verbrauch wird ohne Höhenprofil berechnet.");
+          return { ascent: 0, descent: 0, routeDistance, maxGradePercent: 0, missing: true };
+        }
+      }
+    }
+
+    function placeFromNominatim(item) {
+      return {
+        name: item.display_name || item.name,
+        lat: Number(item.lat),
+        lon: Number(item.lon),
+        type: item.type || item.class || "Adresse",
+        address: item.address || {},
+        isHistory: item.isHistory === true
+      };
+    }
+
+    function shortAddress(item) {
+      const a = item.address || {};
+      const road = a.road || a.pedestrian || a.footway || a.cycleway || a.path || "";
+      const house = a.house_number || "";
+      const postcode = a.postcode || "";
+      const city = a.city || a.town || a.village || a.municipality || a.county || "";
+      const country = a.country || "";
+      const main = [road, house].filter(Boolean).join(" ");
+      const sub = [postcode, city, country].filter(Boolean).join(", ");
+      return {
+        main: main || item.name || String(item.display_name || "").split(",")[0],
+        sub: item.isHistory ? "Zuletzt verwendet" : (sub || item.display_name || item.name)
+      };
+    }
+
+    async function searchPlaces(query, limit = 8) {
+      assertServiceConsent();
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("addressdetails", "1");
+      url.searchParams.set("limit", String(limit));
+      url.searchParams.set("accept-language", "de");
+      url.searchParams.set("q", query);
+      return await fetchJson(url, "Adresssuche fehlgeschlagen");
+    }
+
+    async function geocode(query, fieldId) {
+      if (selectedPlaces[fieldId] && selectedPlaces[fieldId].typedValue === query) {
+        return selectedPlaces[fieldId];
+      }
+
+      const data = await searchPlaces(query, 1);
+      if (!data.length) {
+        throw new Error(`Adresse nicht gefunden: ${query}`);
+      }
+
+      const place = placeFromNominatim(data[0]);
+      selectedPlaces[fieldId] = { ...place, typedValue: query };
+      saveAddressToHistory(place);
+      return place;
+    }
+
+    function setupAutocomplete(inputId, suggestionsId) {
+      const input = $(inputId);
+      const box = $(suggestionsId);
+      let currentItems = [];
+      let activeIndex = -1;
+
+      function hide() {
+        box.classList.remove("show");
+        box.innerHTML = "";
+        currentItems = [];
+        activeIndex = -1;
+      }
+
+      function choose(item) {
+        const place = placeFromNominatim(item);
+        input.value = place.name;
+        selectedPlaces[inputId] = { ...place, typedValue: input.value };
+        saveAddressToHistory(place);
+        hide();
+        setStatus(item.isHistory ? "Adresse aus Verlauf ausgewählt." : "Adresse ausgewählt.", "");
+      }
+
+      function setActive(index) {
+        const rows = [...box.querySelectorAll(".suggestion")];
+        rows.forEach(row => row.classList.remove("active"));
+        if (!rows.length) return;
+
+        activeIndex = Math.max(0, Math.min(index, rows.length - 1));
+        rows[activeIndex].classList.add("active");
+        rows[activeIndex].scrollIntoView({ block: "nearest" });
+      }
+
+      function render(items) {
+        currentItems = items;
+        activeIndex = -1;
+        box.innerHTML = "";
+
+        if (!items.length) {
+          hide();
+          return;
+        }
+
+        items.forEach((item, index) => {
+          const label = shortAddress(item);
+          const row = document.createElement("div");
+          row.className = "suggestion";
+          row.setAttribute("role", "option");
+          row.innerHTML = `<strong>${escapeHtml(label.main)}${item.isHistory ? '<span class="history-badge">Verlauf</span>' : ''}</strong><small>${escapeHtml(label.sub)}</small>`;
+
+          row.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            choose(item);
+          });
+
+          row.addEventListener("mouseenter", () => setActive(index));
+          box.appendChild(row);
+        });
+
+        box.classList.add("show");
+      }
+
+      const update = debounce(async () => {
+        const query = input.value.trim();
+        selectedPlaces[inputId] = null;
+
+        if (query.length < 3) {
+          render(buildSuggestionsWithHistory(query, []));
+          return;
+        }
+
+        try {
+          const items = await searchPlaces(query, 8);
+          render(buildSuggestionsWithHistory(query, items));
+        } catch (err) {
+          hide();
+          setStatus(err.message, "warn");
+          logDebug(err.message);
+        }
+      }, 350);
+
+      input.addEventListener("input", update);
+      input.addEventListener("focus", update);
+
+      input.addEventListener("keydown", (event) => {
+        if (!box.classList.contains("show")) return;
+
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          setActive(activeIndex + 1);
+        }
+
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          setActive(activeIndex <= 0 ? currentItems.length - 1 : activeIndex - 1);
+        }
+
+        if (event.key === "Enter" && activeIndex >= 0) {
+          event.preventDefault();
+          choose(currentItems[activeIndex]);
+        }
+
+        if (event.key === "Escape") hide();
+      });
+
+      document.addEventListener("pointerdown", (event) => {
+        if (!input.parentElement.contains(event.target)) hide();
+      });
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function routeOsrm(start, ziel, via = null) {
+      assertServiceConsent();
+      const routePoints = via ? [start, via, ziel] : [start, ziel];
+      const coords = routePoints.map(p => `${p.lon},${p.lat}`).join(";");
+      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true&alternatives=false&annotations=distance,duration`;
+      const data = await fetchJson(url, "Routing fehlgeschlagen");
+
+      if (data.code !== "Ok" || !data.routes || !data.routes.length) {
+        throw new Error(data.message || "Keine Route gefunden.");
+      }
+
+      return data.routes[0];
+    }
+
+    function haversineMeters(a, b) {
+      const R = 6371000;
+      const toRad = deg => deg * Math.PI / 180;
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+      const dLat = toRad(b.lat - a.lat);
+      const dLon = toRad(b.lon - a.lon);
+
+      const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+
+      return 2 * R * Math.asin(Math.sqrt(h));
+    }
+
+    function sampleRouteCoordinates(route, maxPoints = 95) {
+      const coords = route.geometry.coordinates.map(([lon, lat]) => ({ lat, lon }));
+      const distanceM = Number(route.distance || 0);
+
+      // Höhen-APIs enthalten Messrauschen. Zu viele Punkte auf kurzen Routen summieren
+      // dieses Rauschen fälschlich als Aufstieg/Gefälle. Daher adaptiv:
+      // ungefähr ein Höhenpunkt je 500 m, mindestens 20, höchstens maxPoints.
+      const adaptiveMaxPoints = distanceM > 0
+        ? Math.max(20, Math.min(maxPoints, Math.round(distanceM / 500)))
+        : maxPoints;
+
+      if (coords.length <= adaptiveMaxPoints) return coords;
+
+      const sampled = [];
+      const step = (coords.length - 1) / (adaptiveMaxPoints - 1);
+
+      for (let i = 0; i < adaptiveMaxPoints; i++) {
+        sampled.push(coords[Math.round(i * step)]);
+      }
+
+      return sampled;
+    }
+
+    function validateElevationInput(points) {
+      const validPoints = (points || []).filter(point =>
+        point &&
+        Number.isFinite(Number(point.lat)) &&
+        Number.isFinite(Number(point.lon))
+      );
+
+      if (!validPoints.length) {
+        throw new Error("Keine gültigen Koordinatenpunkte für das Höhenprofil vorhanden.");
+      }
+
+      return validPoints.map(point => ({
+        lat: Number(point.lat),
+        lon: Number(point.lon)
+      }));
+    }
+
+    async function fetchOpenMeteoElevation(points) {
+      const validPoints = validateElevationInput(points);
+      const result = [];
+      const batchSize = 80;
+
+      for (let start = 0; start < validPoints.length; start += batchSize) {
+        const batch = validPoints.slice(start, start + batchSize);
+        const url = new URL("https://api.open-meteo.com/v1/elevation");
+        url.searchParams.set("latitude", batch.map(p => p.lat.toFixed(6)).join(","));
+        url.searchParams.set("longitude", batch.map(p => p.lon.toFixed(6)).join(","));
+
+        const data = await fetchJson(url, "Open-Meteo Höhendaten fehlgeschlagen", {
+          timeoutMs: 22000
+        });
+
+        const elevations = Array.isArray(data?.elevation) ? data.elevation : null;
+        if (!elevations || elevations.length !== batch.length) {
+          throw new Error("Open-Meteo lieferte unvollständige Höhendaten.");
+        }
+
+        elevations.forEach((elevation, index) => {
+          const numericElevation = Number(elevation);
+          if (!Number.isFinite(numericElevation)) {
+            throw new Error("Open-Meteo lieferte für mindestens einen Punkt keine Höhe.");
+          }
+
+          result.push({
+            ...batch[index],
+            elevation: numericElevation,
+            elevationSource: "Open-Meteo Elevation"
+          });
+        });
+      }
+
+      if (result.length !== validPoints.length) {
+        throw new Error("Open-Meteo lieferte nicht für alle Punkte Höhendaten.");
+      }
+
+      return result;
+    }
+
+    async function fetchOpenElevation(points) {
+      const url = "https://api.open-elevation.com/api/v1/lookup";
+      const body = {
+        locations: points.map(p => ({ latitude: p.lat, longitude: p.lon }))
+      };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 22000);
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) throw new Error(`Open-Elevation HTTP ${res.status}`);
+
+        const data = await res.json();
+        if (!data.results || data.results.length !== points.length) {
+          throw new Error("Open-Elevation lieferte unvollständige Höhendaten.");
+        }
+
+        return data.results.map((item, index) => ({
+          ...points[index],
+          elevation: Number(item.elevation),
+          elevationSource: "Open-Elevation"
+        }));
+      } catch (err) {
+        if (err.name === "AbortError") {
+          throw new Error("Open-Elevation Zeitüberschreitung");
+        }
+        if (err instanceof TypeError) {
+          throw new Error("Open-Elevation Netzwerk-/CORS-Fehler: " + err.message);
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function fetchOpenTopoData(points) {
+      // OpenTopoData akzeptiert mehrere Punkte als pipe-getrennte GET-Abfrage:
+      // locations=lat,lon|lat,lon|...
+      const locations = points
+        .map(p => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`)
+        .join("|");
+
+      const url = new URL("https://api.opentopodata.org/v1/srtm90m");
+      url.searchParams.set("locations", locations);
+
+      const data = await fetchJson(url, "OpenTopoData Höhendaten fehlgeschlagen", {
+        timeoutMs: 22000
+      });
+
+      if (!data.results || data.results.length !== points.length) {
+        throw new Error("OpenTopoData lieferte unvollständige Höhendaten.");
+      }
+
+      return data.results.map((item, index) => {
+        if (item.elevation === null || item.elevation === undefined || Number.isNaN(Number(item.elevation))) {
+          throw new Error("OpenTopoData lieferte für mindestens einen Punkt keine Höhe.");
+        }
+
+        return {
+          ...points[index],
+          elevation: Number(item.elevation),
+          elevationSource: "OpenTopoData SRTM90m"
+        };
+      });
+    }
+
+    async function fetchElevations(points) {
+      assertServiceConsent();
+      const errors = [];
+      const validPoints = validateElevationInput(points);
+
+      try {
+        setStatus("Ermittle Höhenprofil über Open-Meteo …");
+        const result = await fetchOpenMeteoElevation(validPoints);
+        logDebug("Höhendatenquelle: Open-Meteo Elevation");
+        return result;
+      } catch (err) {
+        errors.push("Open-Meteo: " + (err.message || String(err)));
+        logDebug("Open-Meteo fehlgeschlagen: " + (err.message || String(err)));
+      }
+
+      try {
+        setStatus("Open-Meteo nicht verfügbar. Versuche Open-Elevation …", "warn");
+        const result = await fetchOpenElevation(validPoints);
+        logDebug("Höhendatenquelle: Open-Elevation");
+        return result;
+      } catch (err) {
+        errors.push("Open-Elevation: " + (err.message || String(err)));
+        logDebug("Open-Elevation fehlgeschlagen: " + (err.message || String(err)));
+      }
+
+      try {
+        setStatus("Open-Elevation nicht verfügbar. Versuche OpenTopoData …", "warn");
+        const result = await fetchOpenTopoData(validPoints);
+        logDebug("Höhendatenquelle: OpenTopoData SRTM90m");
+        return result;
+      } catch (err) {
+        errors.push("OpenTopoData: " + (err.message || String(err)));
+        logDebug("OpenTopoData fehlgeschlagen: " + (err.message || String(err)));
+      }
+
+      throw new Error(
+        "Keine Höhendaten verfügbar. " +
+        "Open-Meteo, Open-Elevation und OpenTopoData konnten nicht abgefragt werden. " +
+        errors.join(" | ")
+      );
+    }
+
+    function smoothElevationPoints(elevationPoints, windowSize = 5) {
+      const half = Math.floor(windowSize / 2);
+
+      return elevationPoints.map((point, index) => {
+        let sum = 0;
+        let count = 0;
+
+        for (let j = index - half; j <= index + half; j++) {
+          if (j >= 0 && j < elevationPoints.length) {
+            sum += elevationPoints[j].elevation;
+            count++;
+          }
+        }
+
+        return {
+          ...point,
+          rawElevation: point.elevation,
+          elevation: sum / Math.max(count, 1)
+        };
+      });
+    }
+
+    function analyzeElevation(elevationPoints) {
+      let ascent = 0;
+      let descent = 0;
+      let routeDistance = 0;
+      let maxGrade = 0;
+
+      const points = smoothElevationPoints(elevationPoints, 5);
+      const startElevation = points.length ? Number(points[0].elevation) : 0;
+      const endElevation = points.length ? Number(points[points.length - 1].elevation) : startElevation;
+      const netElevationM = Number.isFinite(startElevation) && Number.isFinite(endElevation)
+        ? endElevation - startElevation
+        : 0;
+
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const horizontal = haversineMeters(prev, curr);
+        const diff = curr.elevation - prev.elevation;
+
+        routeDistance += horizontal;
+
+        if (horizontal <= 0) continue;
+
+        const grade = diff / horizontal;
+
+        // DEM-Höhendaten sind oft um mehrere Meter verrauscht. Auf kurzen Routen
+        // wurde dieses Rauschen bisher als echter Aufstieg addiert und konnte den
+        // kWh/100-km-Wert stärker beeinflussen als die Geschwindigkeit.
+        //
+        // Deshalb:
+        // - gleitende Glättung
+        // - dynamischer Deadband je Segment
+        // - nur relevante Höhenänderungen zählen
+        const minVerticalChange = Math.max(6, horizontal * 0.006); // mind. 6 m oder ca. 0,6 %
+        if (Math.abs(diff) < minVerticalChange) continue;
+
+        if (diff > 0) ascent += diff;
+        else descent += Math.abs(diff);
+
+        maxGrade = Math.max(maxGrade, Math.abs(grade));
+      }
+
+      // Plausibilitätsbremse gegen weiterhin verrauschte API-Daten:
+      // Mehr als 35 Höhenmeter pro km sind für normale Straßenrouten ungewöhnlich.
+      // Echte Gebirgsrouten bleiben möglich, aber Extremwerte werden abgefangen.
+      const km = routeDistance / 1000;
+      const maxReasonableMeters = km > 0 ? km * 35 : Infinity;
+      ascent = Math.min(ascent, maxReasonableMeters);
+      descent = Math.min(descent, maxReasonableMeters);
+
+      return {
+        ascent,
+        descent,
+        routeDistance,
+        maxGradePercent: maxGrade * 100,
+        startElevation,
+        endElevation,
+        netElevationM
+      };
+    }
+
+    function inferStepStandardSpeedKmh(step) {
+      const classes = step.intersections?.flatMap(i => i.classes || []) || [];
+      const roadName = String(step.name || "").toLowerCase();
+      const destinations = String(step.destinations || "").toLowerCase();
+      const ref = String(step.ref || "").toLowerCase();
+      const combined = `${roadName} ${destinations} ${ref}`;
+
+      // Für den Verbrauchsrechner modellieren wir typische europäische freie Geschwindigkeiten.
+      // Diese Werte ersetzen nicht echte Verkehrsregeln, dienen aber dazu, Nutzerlimits wie 120
+      // auf schnellen Abschnitten tatsächlich auf Fahrzeit und Verbrauchskurve wirken zu lassen.
+      if (
+        classes.includes("motorway") ||
+        /\b[a]\s?\d+\b/.test(combined) ||
+        combined.includes("autobahn") ||
+        combined.includes("motorway")
+      ) {
+        return 130;
+      }
+
+      if (
+        classes.includes("trunk") ||
+        combined.includes("schnellstraße") ||
+        /\b[s]\s?\d+\b/.test(combined)
+      ) {
+        return 110;
+      }
+
+      if (classes.includes("primary")) return 100;
+      if (classes.includes("secondary")) return 90;
+      if (classes.includes("tertiary")) return 80;
+      if (classes.includes("residential") || classes.includes("living_street") || classes.includes("service")) return 50;
+
+      return null;
+    }
+
+    function buildSpeedSegments(route) {
+      const userMaxSpeed = Number($("maxSpeed").value || 0);
+      const steps = route.legs?.flatMap(leg => leg.steps || []) || [];
+      const routeAvgSpeed = (route.distance / 1000) / Math.max(route.duration / 3600, 0.001);
+      const segments = [];
+
+      if (!steps.length) {
+        const speed = userMaxSpeed ? Math.min(routeAvgSpeed, userMaxSpeed) : routeAvgSpeed;
+        segments.push({
+          distanceM: route.distance,
+          originalSeconds: route.duration,
+          seconds: (route.distance / 1000) / Math.max(speed, 5) * 3600,
+          originalSpeedKmh: routeAvgSpeed,
+          speedKmh: Math.max(speed, 5),
+          standardSpeedKmh: null,
+          capped: userMaxSpeed > 0 && speed < routeAvgSpeed,
+          roadType: "fallback",
+          stopEvents: Math.max(0, Math.round((route.distance / 1000) / 8))
+        });
+        return segments;
+      }
+
+      for (const step of steps) {
+        const distM = Number(step.distance || 0);
+        const durS = Number(step.duration || 0);
+        if (distM <= 0 || durS <= 0) continue;
+
+        const osrmStepSpeed = (distM / 1000) / (durS / 3600);
+        const standardSpeed = inferStepStandardSpeedKmh(step);
+        const referenceSpeed = standardSpeed ? Math.max(standardSpeed, osrmStepSpeed) : osrmStepSpeed;
+        const limitedSpeed = userMaxSpeed ? Math.min(referenceSpeed, userMaxSpeed) : referenceSpeed;
+        const seconds = (distM / 1000) / Math.max(limitedSpeed, 5) * 3600;
+
+        const classes = step.intersections?.flatMap(i => i.classes || []) || [];
+        const roadType =
+          classes.includes("motorway") ? "motorway" :
+          classes.includes("trunk") ? "trunk" :
+          classes.includes("primary") ? "primary" :
+          classes.includes("secondary") ? "secondary" :
+          classes.includes("tertiary") ? "tertiary" :
+          (classes.includes("residential") || classes.includes("living_street") || classes.includes("service")) ? "urban" :
+          "unknown";
+
+        // Heuristik für Zusatzereignisse im Zeitmodell, weil OSRM keine echte
+        // Geschwindigkeitskurve mit Ampeln und Kreisverkehren liefert.
+        let stopSpacingKm = 4.0;
+        if (roadType === "urban") stopSpacingKm = 0.75;
+        else if (roadType === "tertiary") stopSpacingKm = 1.4;
+        else if (roadType === "secondary") stopSpacingKm = 2.2;
+        else if (roadType === "primary") stopSpacingKm = 3.5;
+        else if (roadType === "trunk") stopSpacingKm = 7.0;
+        else if (roadType === "motorway") stopSpacingKm = 25.0;
+
+        const maneuverType = String(step.maneuver?.type || "");
+        const maneuverAddsStop = /^(depart|arrive|roundabout|rotary|turn|new name|end of road|fork)$/i.test(maneuverType) && roadType !== "motorway";
+        const stopEvents = Math.max(0, Math.floor((distM / 1000) / stopSpacingKm) + (maneuverAddsStop ? 0.35 : 0));
+
+        segments.push({
+          distanceM: distM,
+          originalSeconds: durS,
+          seconds,
+          originalSpeedKmh: osrmStepSpeed,
+          speedKmh: Math.max(limitedSpeed, 5),
+          standardSpeedKmh: standardSpeed,
+          capped: userMaxSpeed > 0 && limitedSpeed < referenceSpeed,
+          roadType,
+          stopEvents
+        });
+      }
+
+      return segments;
+    }
+
+    function computeSpeedModel(route) {
+      const userMaxSpeed = Number($("maxSpeed").value || 0);
+      const osrmAvgSpeed = (route.distance / 1000) / (route.duration / 3600);
+      const segments = buildSpeedSegments(route);
+
+      let seconds = 0;
+      let cappedDistanceM = 0;
+      let weightedV2Original = 0;
+      let weightedV2Limited = 0;
+      let modeledDistance = 0;
+      let cappedSteps = 0;
+
+      for (const seg of segments) {
+        seconds += seg.seconds;
+        modeledDistance += seg.distanceM;
+        weightedV2Original += seg.distanceM * seg.originalSpeedKmh * seg.originalSpeedKmh;
+        weightedV2Limited += seg.distanceM * seg.speedKmh * seg.speedKmh;
+        if (seg.capped) {
+          cappedDistanceM += seg.distanceM;
+          cappedSteps++;
+        }
+      }
+
+      if (!modeledDistance) {
+        seconds = route.duration;
+      }
+
+      return {
+        seconds,
+        originalSeconds: route.duration,
+        capped: cappedSteps > 0,
+        method: userMaxSpeed
+          ? "Segmentmodell: OSRM-Steps + Straßenklassen-Speed + Nutzerlimit"
+          : "Segmentmodell: OSRM-Steps + Straßenklassen-Speed ohne Nutzerlimit",
+        avgSpeedKmh: (route.distance / 1000) / Math.max(seconds / 3600, 0.001),
+        referenceAvgSpeedKmh: osrmAvgSpeed,
+        aerodynamicFactor: weightedV2Original > 0 ? weightedV2Limited / weightedV2Original : 1,
+        cappedDistanceM,
+        segments
+      };
+    }
+
+    function estimateConsumption(distanceM, durationS, tempC, elevation = null, speedModel = null) {
+      const basisKwh100 = Number(vehicleSettings.basisKwh100 || 18);
+      const distanceKm = Math.max(0.001, distanceM / 1000);
+      const avgSpeed = speedModel?.avgSpeedKmh || (distanceKm / Math.max(durationS / 3600, 0.001));
+      const referenceAvgSpeed = speedModel?.referenceAvgSpeedKmh || avgSpeed;
+      const segments = speedModel?.segments?.length
+        ? speedModel.segments
+        : [{ distanceM, seconds: durationS, speedKmh: avgSpeed, originalSpeedKmh: avgSpeed }];
+
+      const vehicleMassKg = Number(vehicleSettings.massKg || 2000);
+      const regenBase = Math.max(0, Math.min(0.85, Number(vehicleSettings.regenEffPercent || 45) / 100));
+      const driveEff = Math.max(0.70, Math.min(0.95, Number(vehicleSettings.driveEffPercent || 86) / 100));
+      const g = 9.81;
+      const jouleToKwh = 1 / 3600000;
+
+      // Neues Primärmodell:
+      // 1) Basisverbrauch ist der reale Fahrzeuganker in kWh/100 km.
+      // 2) Geschwindigkeit verändert diesen Anker über eine glatte Kurve.
+      // 3) Temperatur verändert den Verbrauch über eine separate Kurve.
+      // 4) Höhenprofil wird als Netto-Steigung/Gefälle plus symmetrische Profilwellen addiert.
+      // Keine indirekten Einzelanteile: nur Primärparameter, die Nutzer direkt verstehen und kalibrieren können.
+      const factorBase = settingPercent(vehicleSettings, "factorBasePercent", 100) / 100;
+      const factorSpeedRaw = settingPercent(vehicleSettings, "factorSpeedPercent", 250) / 100;
+      // Der Slider skaliert nur die Abweichung von der neutralen Stadt-/Ortsgeschwindigkeit.
+      // Wichtig: Im Bereich 30-65 km/h darf der Regler fast nichts verändern, sonst entstehen
+      // unrealistische Sprünge wie 37 km/h = 17 kWh und 53 km/h = 23 kWh. Über 65 km/h wird
+      // die quadratische v²-Kurve dagegen sichtbar stärker oder schwächer.
+      const factorSpeed = factorSpeedRaw <= 1
+        ? factorSpeedRaw * 0.90
+        : 1 + ((factorSpeedRaw - 1) * 1.85);
+      const factorTemperature = settingPercent(vehicleSettings, "factorTemperaturePercent", 110) / 100;
+      const factorElevation = settingPercent(vehicleSettings, "factorElevationPercent", 100) / 100;
+      const factorRegen = settingPercent(vehicleSettings, "factorRegenPercent", 100) / 100;
+
+      // Geschwindigkeitskurve nach realem Fahrverhalten:
+      // Die Kurve ist bewusst nach rechts verschoben: 30-65 km/h liegen fast auf demselben
+      // Verbrauchsniveau. Das entspricht Stadt-/Ortsverkehr, wo Luftwiderstand noch nicht
+      // dominiert und kleine Durchschnittsspeed-Unterschiede keinen großen kWh-Sprung erzeugen.
+      // Erst oberhalb der neutralen Schwelle steigt der Mehrverbrauch quadratisch mit v².
+      const speedAnchorKmh = Math.max(65, Math.min(80, Number(vehicleSettings.speedAnchorKmh || 72)));
+      const aeroCurveWeight = 0.055;
+      const basisKwhPerKm = (basisKwh100 * factorBase) / 100;
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function speedFactorForSpeed(speedKmh) {
+        const speed = clamp(Number(speedKmh || speedAnchorKmh), 5, 180);
+        let raw;
+
+        if (speed <= speedAnchorKmh) {
+          // Sehr flacher Bereich für Stadt/Ortsgebiet:
+          // 25-70 km/h unterscheiden sich im kWh/100-km-Wert nur gering.
+          // Damit Hin-/Retour-Routen in urbanem Bereich nicht künstlich auseinanderlaufen.
+          const veryLowRange = clamp((25 - speed) / 20, 0, 1);
+          raw = 1 + 0.010 * Math.pow(veryLowRange, 1.15);
+        } else {
+          // Gedämpfte quadratische Hochgeschwindigkeitskurve:
+          // Luftwiderstand steigt zwar mit v², aber der Fahrzeug-Basisverbrauch enthält bereits
+          // einen realen Mischanteil. Deshalb darf der Zusatz erst deutlich oberhalb des
+          // Stadt-/Ortsbereichs spürbar werden.
+          const quadraticAeroRise = Math.pow(speed / speedAnchorKmh, 2) - 1;
+          raw = 1 + aeroCurveWeight * quadraticAeroRise;
+        }
+
+        return clamp(1 + ((raw - 1) * factorSpeed), 0.98, 2.20);
+      }
+
+      function temperatureFactorForTemp(t) {
+        const temp = Number.isFinite(Number(t)) ? Number(t) : 20;
+        let raw = 1;
+
+        if (temp < 20) {
+          raw += 0.010 * Math.pow(20 - temp, 1.18);
+        }
+
+        if (temp > 24) {
+          raw += 0.007 * Math.pow(temp - 24, 1.22);
+        }
+
+        return clamp(1 + ((raw - 1) * factorTemperature), 0.92, 1.80);
+      }
+
+      // Verbrauch über Geschwindigkeit bewusst routenbasiert:
+      // OSRM segmentiert Hin- und Rückweg teilweise unterschiedlich. Wenn man jeden Step
+      // einzeln mit Straßenklassen bewertet, entstehen bei fast gleicher Strecke zu große
+      // kWh/100-km-Unterschiede. Für Verbrauch nutzen wir daher den gedämpften Faktor aus
+      // der tatsächlichen Modell-Ø-Geschwindigkeit. Die Segmentdaten bleiben für Fahrzeit,
+      // Max-Speed und Diagnose erhalten.
+      const routeSpeedFactor = speedFactorForSpeed(avgSpeed);
+      let weightedSpeedFactorDistance = distanceKm * routeSpeedFactor;
+      let totalSegmentDistance = distanceKm;
+      let speedEnergyKwh = basisKwhPerKm * distanceKm * routeSpeedFactor;
+
+      const tempFactor = temperatureFactorForTemp(tempC);
+      const baseKwh = speedEnergyKwh * tempFactor;
+
+      let elevationExtraKwh = 0;
+      let recuperationCreditKwh = 0;
+      let elevationUndulationLossKwh = 0;
+      let netElevationM = 0;
+      let elevationEnergySensitivity = factorElevation;
+
+      if (elevation) {
+        const reportedNetElevation = Number(elevation.netElevationM);
+        netElevationM = Number.isFinite(reportedNetElevation)
+          ? reportedNetElevation
+          : Number(elevation.ascent || 0) - Number(elevation.descent || 0);
+
+        const uphillM = Math.max(0, netElevationM);
+        const downhillM = Math.max(0, -netElevationM);
+        const sharedUndulationM = Math.max(0, Math.min(Number(elevation.ascent || 0), Number(elevation.descent || 0)));
+        const elevationScale = clamp(factorElevation, 0, 2.2);
+        const regenScale = clamp(factorRegen, 0, 1.8);
+        const regenEff = clamp(regenBase * regenScale, 0, 0.85);
+
+        elevationEnergySensitivity = elevationScale;
+        elevationExtraKwh = ((vehicleMassKg * g * uphillM * jouleToKwh) / driveEff) * elevationScale;
+        recuperationCreditKwh = (vehicleMassKg * g * downhillM * jouleToKwh) * regenEff * elevationScale;
+
+        // Profilwellen sind symmetrisch und nicht richtungsdominant. Nur ein kleiner Anteil bleibt als Verlust.
+        const undulationGrossKwh = vehicleMassKg * g * sharedUndulationM * jouleToKwh;
+        // Profilwellen dürfen Hin/Retour in flachem Gebiet nicht dominieren.
+        // Deshalb sehr defensiver Verlustanteil; echter Netto-Höhenunterschied bleibt separat wirksam.
+        elevationUndulationLossKwh = undulationGrossKwh * Math.max(0, (1 / driveEff) - regenEff) * 0.12 * elevationScale;
+      }
+
+      const totalKwh = Math.max(0, baseKwh + elevationExtraKwh + elevationUndulationLossKwh - recuperationCreditKwh);
+      const kwh100 = totalKwh / (distanceM / 100000);
+      const speedFactor = totalSegmentDistance > 0 ? weightedSpeedFactorDistance / totalSegmentDistance : speedFactorForSpeed(avgSpeed);
+      const lowSpeedFactor = speedFactorForSpeed(avgSpeed);
+
+      return {
+        avgSpeed,
+        referenceAvgSpeed,
+        kwh100,
+        totalKwh,
+        baseKwh,
+        speedEnergyKwh,
+        rollingKwh: 0,
+        aeroKwh: 0,
+        baseAuxKwh: 0,
+        climateKwh: Math.max(0, baseKwh - speedEnergyKwh),
+        lowSpeedCorrectionKwh: 0,
+        elevationExtraKwh,
+        elevationUndulationLossKwh,
+        recuperationCreditKwh,
+        netElevationM,
+        elevationEnergySensitivity,
+        kineticDriveKwh: 0,
+        kineticRegenKwh: 0,
+        stopStartNetKwh: 0,
+        kineticNetKwh: 0,
+        speedFactor,
+        tempFactor,
+        aerodynamicFactor: speedModel?.aerodynamicFactor ?? 1,
+        speedLimitEnergyFactor: speedFactor,
+        lowSpeedFactor,
+        lowSpeedFloor: 1,
+        lowSpeedReferenceKmh: speedAnchorKmh,
+        baseSpeedFactor: speedFactor,
+        baseEnergyCalibration: factorBase,
+        factorBasePercent: factorBase * 100,
+        factorSpeedPercent: factorSpeedRaw * 100,
+        factorSpeedEffectivePercent: factorSpeed * 100,
+        lowSpeedConsumptionMultiplier: lowSpeedFactor,
+        factorTemperaturePercent: factorTemperature * 100,
+        factorElevationPercent: factorElevation * 100,
+        factorRegenPercent: factorRegen * 100
+      };
+    }
+
+    function initMap() {
+      if (typeof L === "undefined") {
+        setStatus("Leaflet konnte nicht geladen werden. Bitte Internetverbindung prüfen.", "error");
+        logDebug("Leaflet library missing");
+        return;
+      }
+
+      map = L.map("map", {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        dragging: true,
+        tap: true,
+        touchZoom: true,
+        doubleClickZoom: true,
+        boxZoom: true
+      }).setView([48.2, 16.37], 6);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 250);
+      $("mapState").textContent = "geladen";
+    }
+
+    function clearMap() {
+      if (routeLayer) {
+        routeLayer.remove();
+        routeLayer = null;
+      }
+
+      markers.forEach(marker => marker.remove());
+      markers = [];
+      routeBounds = null;
+    }
+
+    function drawRoute(route, start, ziel, via = null) {
+      clearMap();
+
+      routeLayer = L.geoJSON(route.geometry, {
+        style: {
+          color: "#38bdf8",
+          weight: 6,
+          opacity: 0.95,
+          lineCap: "round",
+          lineJoin: "round"
+        }
+      }).addTo(map);
+
+      markers = [
+        L.marker([start.lat, start.lon]).addTo(map).bindPopup("Start<br>" + escapeHtml(start.name))
+      ];
+
+      if (via) {
+        markers.push(
+          L.circleMarker([via.lat, via.lon], {
+            radius: 7,
+            color: "#fde68a",
+            weight: 3,
+            fillOpacity: 0.85
+          }).addTo(map).bindPopup("Route über<br>" + escapeHtml(via.name))
+        );
+      }
+
+      markers.push(
+        L.marker([ziel.lat, ziel.lon]).addTo(map).bindPopup("Ziel<br>" + escapeHtml(ziel.name))
+      );
+
+      const coords = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+      routeBounds = L.latLngBounds(coords);
+      fitRoute();
+    }
+
+    function fitRoute() {
+      if (!map || !routeBounds) {
+        setStatus("Noch keine Route zum Einpassen vorhanden.", "warn");
+        return;
+      }
+
+      map.invalidateSize();
+
+      // Padding bewusst groß, damit die Route nicht am Rand abgeschnitten wird.
+      map.fitBounds(routeBounds, {
+        padding: [42, 42],
+        maxZoom: 14,
+        animate: false
+      });
+
+      $("mapState").textContent = "Route sichtbar";
+    }
+
+    async function calculate() {
+      if (!hasServiceConsent()) {
+        openServiceConsentModal();
+        setStatus("Bitte zuerst der Nutzung der Dienste zustimmen.", "warn");
+        return;
+      }
+
+      if (!map) {
+        try {
+          await loadLeafletAssets();
+          initMap();
+        } catch (err) {
+          setStatus("Karte konnte nicht initialisiert werden: " + (err.message || String(err)), "error");
+          return;
+        }
+      }
+
+      $("routeBtn").disabled = true;
+      setResultDefaults();
+      setProgress(2);
+      setStatus("Starte Berechnung …");
+
+      try {
+        const startQuery = $("start").value.trim();
+        const zielQuery = $("ziel").value.trim();
+
+        if (!startQuery || !zielQuery) {
+          throw new Error("Bitte Start und Ziel eingeben.");
+        }
+
+        await sleep(80);
+        setProgress(15);
+        setStatus("Suche Startadresse …");
+        const start = await geocode(startQuery, "start");
+        saveAddressToHistory(start);
+        logDebug("Start: " + start.name);
+
+        logDebug(`Temperatur für Berechnung aus Eingabefeld: ${$("temp").value || "20"} °C`);
+
+        const viaQuery = $("via").value.trim();
+        let via = null;
+
+        if (viaQuery) {
+          await sleep(80);
+          setProgress(28);
+          setStatus("Suche Über-Adresse …");
+          via = await geocode(viaQuery, "via");
+          saveAddressToHistory(via);
+          logDebug("Route über: " + via.name);
+        }
+
+        await sleep(80);
+        setProgress(35);
+        setStatus("Suche Zieladresse …");
+        const ziel = await geocode(zielQuery, "ziel");
+        saveAddressToHistory(ziel);
+        logDebug("Ziel: " + ziel.name);
+
+        await sleep(80);
+        setProgress(60);
+        setStatus(via ? "Berechne Route über gewünschte Adresse …" : "Berechne Route …");
+        const route = await routeOsrm(start, ziel, via);
+        logDebug(`Route${via ? " über Via-Punkt" : ""}: ${Math.round(route.distance)} m, ${Math.round(route.duration)} s`);
+
+        await sleep(80);
+        setProgress(72);
+        setStatus("Zeichne Route auf Karte …");
+        drawRoute(route, start, ziel, via);
+
+        await sleep(80);
+        setProgress(80);
+        setStatus("Ermittle Höhenprofil entlang der Route …");
+        const sampledPoints = sampleRouteCoordinates(route, 95);
+        let elevation = null;
+
+        elevation = await fetchElevationsWithUserFallback(sampledPoints, route.distance);
+
+        await sleep(80);
+        setProgress(94);
+        setStatus(elevation.ascent || elevation.descent ? "Berechne Verbrauch inkl. Steigung und Rekuperation …" : "Berechne Verbrauch ohne Höhendaten …");
+        const tempC = Number($("temp").value || 20);
+        const durationInfo = computeSpeedModel(route);
+        const durationForModel = durationInfo.seconds;
+        logDebug(
+          `Max-Speed-Modell: ${$("maxSpeed").value === "0" ? "ohne Begrenzung" : $("maxSpeed").value + " km/h"}, ` +
+          `Methode=${durationInfo.method}, OSRM-Zeit=${formatDuration(durationInfo.originalSeconds)}, Modellzeit=${formatDuration(durationForModel)}, ` +
+          `begrenzte Strecke=${(durationInfo.cappedDistanceM / 1000).toFixed(1).replace(".", ",")} km, Aero-Faktor=${durationInfo.aerodynamicFactor.toFixed(3)}${durationInfo.cappedDistanceM === 0 && $("maxSpeed").value !== "0" ? " (keine Abschnitte über Limit erkannt)" : ""}`
+        );
+        const est = estimateConsumption(route.distance, durationForModel, tempC, elevation, durationInfo);
+        logDebug(
+          `Verbrauch Speedmodell: Modell-Ø=${est.avgSpeed.toFixed(1)} km/h, Routen-Speed-Faktor=${est.speedFactor.toFixed(3)}, ` +
+          `Low-Speed-Faktor=${est.lowSpeedFactor.toFixed(3)} (gedämpft auf Verbrauch=${est.lowSpeedConsumptionMultiplier.toFixed(3)}, Min=${est.lowSpeedFloor.toFixed(2)}, Ref=${est.lowSpeedReferenceKmh} km/h), ` +
+          `Monotonie-Faktor=${est.speedLimitEnergyFactor.toFixed(3)}, ` +
+          `Aero-Diagnose=${est.aerodynamicFactor.toFixed(3)}`
+        );
+        logDebug(
+          `Verbrauch Primärmodell: Geschwindigkeit=${(est.speedEnergyKwh / (route.distance / 100000)).toFixed(1)} kWh/100km, ` +
+          `Temperaturfaktor=${est.tempFactor.toFixed(3)}, ` +
+          `Höhe netto+=${(est.elevationExtraKwh / (route.distance / 100000)).toFixed(1)} kWh/100km, ` +
+          `Profilwellen=${(est.elevationUndulationLossKwh / (route.distance / 100000)).toFixed(1)} kWh/100km, ` +
+          `Reku netto=-${(est.recuperationCreditKwh / (route.distance / 100000)).toFixed(1)} kWh/100km, ` +
+          `Nettohöhe=${Math.round(est.netElevationM)} m`
+        );
+
+        $("distance").textContent = formatKm(route.distance);
+        $("duration").textContent = formatDuration(durationForModel);
+        $("distanceMini").textContent = formatKm(route.distance);
+        $("durationMini").textContent = formatDuration(durationForModel);
+        $("avgSpeed").textContent = est.avgSpeed.toFixed(0).replace(".", ",") + " km/h";
+        const estimatedRangeKm = vehicleSettings.batteryKwh / est.kwh100 * 100;
+        const neededPercent = est.totalKwh / vehicleSettings.batteryKwh * 100;
+        $("batteryRange").textContent =
+          `${Number(vehicleSettings.batteryKwh).toFixed(1).replace(".", ",")} kWh · ${estimatedRangeKm.toFixed(0)} km · Route ${neededPercent.toFixed(0)} %`;
+        $("batteryMini").textContent = `Route ${neededPercent.toFixed(0)} %`;
+        $("ascent").textContent = Math.round(elevation.ascent).toLocaleString("de-DE") + " m";
+        $("descent").textContent = Math.round(elevation.descent).toLocaleString("de-DE") + " m";
+        $("consumption").textContent =
+          est.totalKwh.toFixed(1).replace(".", ",") + " kWh · " +
+          est.kwh100.toFixed(1).replace(".", ",") + " kWh/100 km";
+        $("consumptionMini").textContent =
+          est.kwh100.toFixed(1).replace(".", ",") + " kWh/100 km";
+
+        $("diagnosis").textContent =
+          `${via ? "Route über: " + via.name + ". " : ""}Fahrzeug: ${vehicleSettings.brand} ${vehicleSettings.model}. Max-Speed: ${$("maxSpeed").value === "0" ? "ohne Begrenzung" : $("maxSpeed").value + " km/h"}${durationInfo.capped ? " – Fahrzeit angepasst" : ""} (${durationInfo.method}). Neues Primärmodell: Geschwindigkeit ${est.speedEnergyKwh.toFixed(1).replace(".", ",")} kWh, Temperaturaufschlag ${(est.baseKwh - est.speedEnergyKwh).toFixed(1).replace(".", ",")} kWh, Höhe netto bergauf ${est.elevationExtraKwh.toFixed(1).replace(".", ",")} kWh, Profilwellen ${est.elevationUndulationLossKwh.toFixed(1).replace(".", ",")} kWh, Rekuperation netto −${est.recuperationCreditKwh.toFixed(1).replace(".", ",")} kWh. Faktoren: Geschwindigkeit ${est.speedFactor.toFixed(2).replace(".", ",")}×, Temperatur ${est.tempFactor.toFixed(2).replace(".", ",")}×, Basis ${est.factorBasePercent.toFixed(0)} %, Speed-Kurve ${est.factorSpeedPercent.toFixed(0)} % (effektiv ${est.factorSpeedEffectivePercent.toFixed(0)} %), Temp-Kurve ${est.factorTemperaturePercent.toFixed(0)} %, Steigung ${est.factorElevationPercent.toFixed(0)} %, Reku ${est.factorRegenPercent.toFixed(0)} %. Ø ${est.avgSpeed.toFixed(0).replace(".", ",")} km/h.`;
+
+        saveConfig();
+        setProgress(100);
+        setStatus("Fertig. Route, Höhenmeter und segmentbasierter Verbrauch werden angezeigt.", "ok");
+      } catch (err) {
+        const msg = err?.message || String(err);
+        setProgress(100);
+        setStatus(msg, "error");
+        $("diagnosis").textContent = "Fehler: " + msg;
+        logDebug("Fehler: " + msg);
+      } finally {
+        $("routeBtn").disabled = false;
+      }
+    }
+
+    function saveConfig() {
+      appConfig.vehicleId = vehicleSettings.id;
+      appConfig.vehicleSettings = { ...vehicleSettings };
+      appConfig.maxSpeed = $("maxSpeed")?.value || appConfig.maxSpeed;
+      appConfig.meteoblueKey = getMeteoblueKey();
+      appConfig.basis = String(vehicleSettings.basisKwh100);
+      appConfig.temp = $("temp")?.value || "20";
+      appConfig.customVehicles = vehiclePresets.filter(v => String(v.id).startsWith("custom-"));
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appConfig));
+      } catch (err) {
+        logDebug("Konfiguration konnte nicht gespeichert werden: " + err.message);
+      }
+    }
+
+    function exportConfigFile() {
+      saveConfig();
+      const exportConfig = { ...appConfig, meteoblueKey: undefined };
+      const blob = new Blob([JSON.stringify(exportConfig, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ev-route-config.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setStatus("Config-Datei exportiert.", "ok");
+    }
+
+    function importConfigFile(file) {
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(String(reader.result || "{}"));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
+          appConfig = { ...appConfig, ...imported };
+          loadConfig();
+          populateVehicleSelect();
+          loadVehicleSettingsToForm(vehicleSettings);
+          updateVehicleSummary();
+          applyConfigToUi();
+          setStatus("Config-Datei importiert und übernommen.", "ok");
+        } catch (err) {
+          setStatus("Config-Import fehlgeschlagen: " + err.message, "error");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function loadConfig() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const saved = JSON.parse(raw);
+        appConfig = { ...appConfig, ...saved };
+        appConfig.addressHistory = Array.isArray(saved.addressHistory) ? saved.addressHistory : [];
+        appConfig.elevationRouteCache = Array.isArray(saved.elevationRouteCache) ? saved.elevationRouteCache.slice(0, ELEVATION_ROUTE_CACHE_LIMIT) : [];
+
+        if (Array.isArray(saved.customVehicles)) {
+          const existingIds = new Set(vehiclePresets.map(v => v.id));
+          saved.customVehicles.forEach(v => {
+            if (v && v.id && !existingIds.has(v.id)) vehiclePresets.push(v);
+          });
+        }
+
+        if (!appConfig.meteoblueKey) {
+          appConfig.meteoblueKey = DEFAULT_METEOBLUE_KEY;
+        }
+
+        if (saved.vehicleSettings) {
+          vehicleSettings = { ...saved.vehicleSettings };
+        } else if (saved.vehicleId) {
+          vehicleSettings = { ...presetById(saved.vehicleId) };
+        }
+      } catch (err) {
+        logDebug("Konfiguration konnte nicht geladen werden: " + err.message);
+      }
+    }
+
+    function applyConfigToUi() {
+      $("maxSpeed").value = appConfig.maxSpeed || "120";
+      $("temp").value = appConfig.temp || "20";
+    }
+
+    function populateVehicleSelect() {
+      const select = $("vehicleSelect");
+      select.innerHTML = "";
+
+      vehiclePresets.forEach(vehicle => {
+        const option = document.createElement("option");
+        option.value = vehicle.id;
+        option.textContent = `${vehicle.brand} ${vehicle.model}`;
+        select.appendChild(option);
+      });
+    }
+
+    function presetById(id) {
+      return vehiclePresets.find(v => v.id === id) || vehiclePresets[0];
+    }
+
+    function settingPercent(settings, key, fallback = 100) {
+      const value = Number(settings?.[key]);
+      return Number.isFinite(value) ? value : fallback;
+    }
+
+    function updateFactorOutputs() {
+      const ids = [
+        "factorBase", "factorSpeed", "factorTemperature", "factorElevation", "factorRegen"
+      ];
+      ids.forEach(id => {
+        const input = $(id);
+        const out = $(id + "Out");
+        if (input && out) out.textContent = `${Number(input.value).toFixed(0)} %`;
+      });
+    }
+
+    function loadVehicleSettingsToForm(settings = vehicleSettings) {
+      $("vehicleSelect").value = settings.id;
+      $("settingsBasis").value = settings.basisKwh100;
+      $("settingsMass").value = settings.massKg;
+      $("settingsBattery").value = settings.batteryKwh;
+      $("factorBase").value = settingPercent(settings, "factorBasePercent", 100);
+      $("factorSpeed").value = settingPercent(settings, "factorSpeedPercent", 250);
+      $("factorTemperature").value = settingPercent(settings, "factorTemperaturePercent", 110);
+      $("factorElevation").value = settingPercent(settings, "factorElevationPercent", 100);
+      $("factorRegen").value = settingPercent(settings, "factorRegenPercent", 100);
+      updateFactorOutputs();
+    }
+
+    function formToVehicleSettings() {
+      const preset = presetById($("vehicleSelect").value);
+
+      return {
+        ...preset,
+        basisKwh100: Number($("settingsBasis").value || preset.basisKwh100),
+        batteryKwh: Number($("settingsBattery").value || preset.batteryKwh),
+        massKg: Number($("settingsMass").value || preset.massKg),
+        driveEffPercent: Number(preset.driveEffPercent || vehicleSettings.driveEffPercent || 85),
+        regenEffPercent: Number(preset.regenEffPercent || vehicleSettings.regenEffPercent || 45),
+        coldPenaltyPercentPerC: Number(preset.coldPenaltyPercentPerC || vehicleSettings.coldPenaltyPercentPerC || 1.5),
+        heatPenaltyPercentPerC: Number(preset.heatPenaltyPercentPerC || vehicleSettings.heatPenaltyPercentPerC || 0.6),
+        speedThresholdKmh: Number(preset.speedThresholdKmh || vehicleSettings.speedThresholdKmh || 90),
+        speedPenaltyPercentPerKmh: Number(preset.speedPenaltyPercentPerKmh || vehicleSettings.speedPenaltyPercentPerKmh || 0.8),
+        speedReferenceKmh: Number(preset.speedReferenceKmh || vehicleSettings.speedReferenceKmh || 90),
+        factorBasePercent: Number($("factorBase").value || 100),
+        factorSpeedPercent: Number($("factorSpeed").value || 250),
+        factorTemperaturePercent: Number($("factorTemperature").value || 110),
+        factorElevationPercent: Number($("factorElevation").value || 100),
+        factorRegenPercent: Number($("factorRegen").value || 100)
+      };
+    }
+
+    function updateVehicleSummary() {
+      $("vehicleSummary").innerHTML =
+        `<strong>${escapeHtml(vehicleSettings.brand)} ${escapeHtml(vehicleSettings.model)}</strong>` +
+        `Akku ${Number(vehicleSettings.batteryKwh).toFixed(1).replace(".", ",")} kWh · ` +
+        `${Math.round(vehicleSettings.massKg).toLocaleString("de-DE")} kg`;
+    }
+
+    function openSettings() {
+      loadVehicleSettingsToForm(vehicleSettings);
+      $("settingsModal").classList.add("open");
+      $("settingsModal").setAttribute("aria-hidden", "false");
+    }
+
+    function closeSettings() {
+      $("settingsModal").classList.remove("open");
+      $("settingsModal").setAttribute("aria-hidden", "true");
+    }
+
+    function applySelectedPreset() {
+      const preset = presetById($("vehicleSelect").value);
+      loadVehicleSettingsToForm(preset);
+    }
+
+    function saveSettings() {
+      vehicleSettings = formToVehicleSettings();
+      updateVehicleSummary();
+      saveConfig();
+      closeSettings();
+      setStatus("Fahrzeugparameter übernommen und gespeichert.", "ok");
+    }
+
+    function resetSettings() {
+      vehicleSettings = { ...vehiclePresets[0] };
+      loadVehicleSettingsToForm(vehicleSettings);
+      updateVehicleSummary();
+      saveConfig();
+      setStatus("Standardparameter wiederhergestellt und gespeichert.");
+    }
+
+    function toggleExpertFields() {
+      const fields = $("expertFields");
+      fields.classList.toggle("open");
+      $("expertToggleBtn").textContent = fields.classList.contains("open")
+        ? "Expertenparameter ausblenden"
+        : "Expertenparameter anzeigen";
+    }
+
+    function openCustomVehicleForm() {
+      $("customVehicleModal").classList.add("open");
+      $("customVehicleModal").setAttribute("aria-hidden", "false");
+    }
+
+    function closeCustomVehicleForm() {
+      $("customVehicleModal").classList.remove("open");
+      $("customVehicleModal").setAttribute("aria-hidden", "true");
+    }
+
+    function saveCustomVehicle() {
+      const brand = $("customBrand").value.trim() || "Eigenes Fahrzeug";
+      const model = $("customModel").value.trim() || "Unbenannt";
+      const basis = Number($("customBasis").value || 18);
+      const battery = Number($("customBattery").value || 60);
+      const mass = Number($("customMass").value || 2000);
+      const regen = Number($("customRegen").value || 45);
+
+      const custom = {
+        id: "custom-" + Date.now(),
+        brand,
+        model,
+        basisKwh100: basis,
+        batteryKwh: battery,
+        massKg: mass,
+        driveEffPercent: 85,
+        regenEffPercent: regen,
+        coldPenaltyPercentPerC: 1.5,
+        heatPenaltyPercentPerC: 0.6,
+        speedThresholdKmh: 90,
+        speedPenaltyPercentPerKmh: 0.8,
+        speedReferenceKmh: 90,
+        factorBasePercent: 100,
+        factorSpeedPercent: 250,
+        factorTemperaturePercent: 110,
+        factorElevationPercent: 100,
+        factorRegenPercent: 100
+      };
+
+      vehiclePresets.push(custom);
+      vehicleSettings = { ...custom };
+      populateVehicleSelect();
+      loadVehicleSettingsToForm(vehicleSettings);
+      updateVehicleSummary();
+      saveConfig();
+      closeCustomVehicleForm();
+      closeSettings();
+      setStatus("Eigenes Fahrzeug wurde angelegt, ausgewählt und gespeichert.", "ok");
+    }
+
+    async function refreshWeatherFromMeteoblue() {
+      if (!hasServiceConsent()) {
+        openServiceConsentModal();
+        setStatus("Bitte zuerst der Nutzung der Dienste zustimmen.", "warn");
+        return;
+      }
+
+      const btn = $("weatherRefreshBtn");
+      btn.disabled = true;
+      setProgress(5);
+      setStatus("Lade Wetter von Meteoblue …");
+
+      try {
+        const startQuery = $("start").value.trim();
+        if (!startQuery) throw new Error("Bitte zuerst eine Startadresse eingeben.");
+
+        const start = await geocode(startQuery, "start");
+        await fetchMeteoblueStartTemperature(start);
+
+        setProgress(100);
+        setStatus("Temperatur von Meteoblue übernommen.", "ok");
+      } catch (err) {
+        setProgress(100);
+        setStatus(err.message || String(err), "error");
+        logDebug("Meteoblue Refresh fehlgeschlagen: " + (err.message || String(err)));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function clearAddress(fieldId) {
+      $(fieldId).value = "";
+      selectedPlaces[fieldId] = null;
+
+      const labels = {
+        start: "Startadresse gelöscht.",
+        via: "Über-Adresse gelöscht.",
+        ziel: "Zieladresse gelöscht."
+      };
+
+      setStatus(labels[fieldId] || "Adresse gelöscht.");
+      $(fieldId).focus();
+    }
+
+    function swapStartAndZiel() {
+      const startInput = $("start");
+      const zielInput = $("ziel");
+
+      const oldStartValue = startInput.value;
+      startInput.value = zielInput.value;
+      zielInput.value = oldStartValue;
+
+      const oldStartPlace = selectedPlaces.start;
+      selectedPlaces.start = selectedPlaces.ziel;
+      selectedPlaces.ziel = oldStartPlace;
+
+      if (selectedPlaces.start) selectedPlaces.start.typedValue = startInput.value;
+      if (selectedPlaces.ziel) selectedPlaces.ziel.typedValue = zielInput.value;
+
+      setStatus("Start und Ziel wurden getauscht.");
+    }
+
+    function toggleDebug() {
+      $("debugCard").classList.toggle("open");
+    }
+
+    function locateMe() {
+      if (!hasServiceConsent()) {
+        openServiceConsentModal();
+        setStatus("Bitte zuerst der Nutzung der Dienste zustimmen.", "warn");
+        return;
+      }
+
+      if (!map || !navigator.geolocation) {
+        setStatus("Positionsbestimmung ist auf diesem Gerät nicht verfügbar.", "warn");
+        return;
+      }
+
+      setStatus("Suche aktuelle Position …");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          L.circleMarker([latitude, longitude], {
+            radius: 8,
+            color: "#86efac",
+            weight: 3
+          }).addTo(map).bindPopup("Meine Position").openPopup();
+
+          map.setView([latitude, longitude], 13);
+          setStatus("Position angezeigt.", "ok");
+        },
+        (err) => {
+          setStatus("Position konnte nicht ermittelt werden: " + err.message, "warn");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function initStartDateTime() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      $("startDateTime").value = now.toISOString().slice(0, 16);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initStartDateTime();
+      loadConfig();
+      populateVehicleSelect();
+      loadVehicleSettingsToForm(vehicleSettings);
+      updateVehicleSummary();
+      applyConfigToUi();
+
+      if (hasServiceConsent()) {
+        loadLeafletAssets()
+          .then(() => initMap())
+          .catch(err => setStatus("Karte konnte nicht geladen werden: " + (err.message || String(err)), "error"));
+      } else {
+        $("mapState").textContent = "wartet auf Zustimmung";
+        setStatus("Bitte der Nutzung der benötigten Dienste zustimmen.", "warn");
+        setTimeout(openServiceConsentModal, 100);
+      }
+
+      setupAutocomplete("start", "startSuggestions");
+      setupAutocomplete("via", "viaSuggestions");
+      setupAutocomplete("ziel", "zielSuggestions");
+
+      $("routeBtn").addEventListener("click", calculate);
+      $("weatherRefreshBtn").addEventListener("click", refreshWeatherFromMeteoblue);
+      $("fitBtn").addEventListener("click", fitRoute);
+      $("locateBtn").addEventListener("click", locateMe);
+      $("swapBtn").addEventListener("click", swapStartAndZiel);
+      $("clearStartBtn").addEventListener("click", () => clearAddress("start"));
+      $("clearViaBtn").addEventListener("click", () => clearAddress("via"));
+      $("clearZielBtn").addEventListener("click", () => clearAddress("ziel"));
+      $("debugToggle").addEventListener("click", toggleDebug);
+
+      $("settingsOpenBtn").addEventListener("click", openSettings);
+      $("settingsCloseBtn").addEventListener("click", closeSettings);
+      $("settingsSaveBtn").addEventListener("click", saveSettings);
+      $("settingsResetBtn").addEventListener("click", resetSettings);
+      $("settingsExportBtn").addEventListener("click", exportConfigFile);
+      $("settingsImportBtn").addEventListener("click", () => $("settingsImportFile").click());
+      $("settingsImportFile").addEventListener("change", (event) => importConfigFile(event.target.files?.[0]));
+      $("vehicleSelect").addEventListener("change", applySelectedPreset);
+      $("expertToggleBtn").addEventListener("click", toggleExpertFields);
+      ["factorBase", "factorSpeed", "factorTemperature", "factorElevation", "factorRegen"].forEach(id => {
+        $(id).addEventListener("input", updateFactorOutputs);
+      });
+      $("settingsModal").addEventListener("click", (event) => {
+        if (event.target.id === "settingsModal") closeSettings();
+      });
+
+      $("addVehicleOpenBtn").addEventListener("click", openCustomVehicleForm);
+      $("customVehicleCloseBtn").addEventListener("click", closeCustomVehicleForm);
+      $("customVehicleCancelBtn").addEventListener("click", closeCustomVehicleForm);
+      $("customVehicleSaveBtn").addEventListener("click", saveCustomVehicle);
+      $("customVehicleModal").addEventListener("click", (event) => {
+        if (event.target.id === "customVehicleModal") closeCustomVehicleForm();
+      });
+
+
+      $("serviceConsentAllBtn").addEventListener("click", () => {
+        serviceConsentCheckboxes().forEach(input => { input.checked = true; });
+        updateServiceConsentButton();
+      });
+      $("serviceConsentSaveBtn").addEventListener("click", saveServiceConsentAndInitialize);
+      serviceConsentCheckboxes().forEach(input => input.addEventListener("change", updateServiceConsentButton));
+
+      $("meteoKeyCloseBtn").addEventListener("click", closeMeteoKeyModal);
+      $("meteoKeyCancelBtn").addEventListener("click", closeMeteoKeyModal);
+      $("meteoKeySaveBtn").addEventListener("click", saveMeteoKeyFromModal);
+      $("meteoKeyModal").addEventListener("click", (event) => {
+        if (event.target.id === "meteoKeyModal") closeMeteoKeyModal();
+      });
+
+      ["maxSpeed", "temp"].forEach(id => {
+        $(id).addEventListener("change", saveConfig);
+      });
+
+      setProgress(0);
+    });
+  </script>
+</body>
+</html>
